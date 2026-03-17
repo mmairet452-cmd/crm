@@ -1,0 +1,1896 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8"/>
+<meta name="viewport" content="width=device-width,initial-scale=1.0"/>
+<title>Eigenvalue CRM</title>
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<style>
+:root{
+  --bg:#0a1208;--bg2:#0f1a0c;--bg3:#152010;--border:#2a3d20;
+  --blue:#C9A84C;--blue2:#e0c070;--text:#F5F0E8;--muted:#8a9e78;
+  --green:#4a9e5c;--amber:#C9A84C;--red:#c0392b;--gold:#C9A84C;
+  --forest:#0F2318;--purple:#5C1A2E;--r:6px;
+}
+*,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
+body{background:var(--bg);color:var(--text);font-family:'Segoe UI',system-ui,sans-serif;font-size:14px;line-height:1.5;height:100vh;display:flex;flex-direction:column;overflow:hidden}
+button{cursor:pointer;font-family:inherit;font-size:13px}
+textarea,input,select{font-family:inherit}
+
+/* TOP BAR */
+.topbar{display:flex;align-items:center;justify-content:space-between;padding:0 1.5rem;height:50px;background:var(--bg2);border-bottom:1px solid var(--border);flex-shrink:0}
+.brand{display:flex;align-items:center;gap:0.8rem}
+.brand-name{font-size:0.9rem;font-weight:600;color:var(--gold);letter-spacing:0.06em}
+.brand-name span{color:var(--muted);font-weight:400;font-size:0.72rem;margin-left:0.3rem}
+.topbar-right{display:flex;align-items:center;gap:1.2rem}
+.topbar-stat{font-size:0.68rem;color:var(--muted);text-align:center}
+.topbar-stat b{display:block;font-size:1rem;font-weight:600}
+
+/* TABS */
+.tabs{display:flex;background:var(--bg2);border-bottom:1px solid var(--border);padding:0 1rem;flex-shrink:0;overflow-x:auto}
+.tab{padding:0.65rem 1rem;font-size:0.72rem;letter-spacing:0.08em;text-transform:uppercase;color:var(--muted);cursor:pointer;border-bottom:2px solid transparent;white-space:nowrap;transition:all 0.15s}
+.tab:hover{color:var(--text)}
+.tab.active{color:var(--gold);border-bottom-color:var(--gold)}
+.badge{background:var(--amber);color:#000;font-size:0.58rem;padding:1px 5px;border-radius:8px;margin-left:3px;font-weight:700}
+.badge.blue{background:var(--blue);color:#fff}
+.badge.green{background:var(--green);color:#fff}
+.badge.purple{background:var(--purple);color:#fff}
+
+/* LAYOUT */
+.main{display:flex;flex:1;overflow:hidden}
+.sidebar{width:200px;min-width:200px;background:var(--bg2);border-right:1px solid var(--border);padding:0.8rem;overflow-y:auto;flex-shrink:0}
+.content{flex:1;overflow-y:auto;padding:1.2rem}
+.page{display:none}.page.active{display:block}
+
+/* SIDEBAR */
+.sb-sec{font-size:0.6rem;letter-spacing:0.2em;text-transform:uppercase;color:var(--muted);margin-bottom:0.4rem;margin-top:0.8rem}
+.sb-item{padding:0.38rem 0.65rem;border-radius:var(--r);font-size:0.78rem;color:var(--muted);cursor:pointer;display:flex;align-items:center;justify-content:space-between;transition:all 0.15s}
+.sb-item:hover{background:var(--bg3);color:var(--text)}
+.sb-item.active{background:rgba(201,168,76,0.12);color:var(--gold)}
+.sb-cnt{background:var(--bg3);border:1px solid var(--border);color:var(--muted);font-size:0.58rem;padding:1px 5px;border-radius:6px}
+
+/* CONTROLS */
+select,input[type=text],input[type=password],input[type=email],textarea{
+  background:var(--bg3);border:1px solid var(--border);color:var(--text);
+  font-size:0.82rem;padding:0.35rem 0.6rem;border-radius:var(--r);outline:none;transition:border-color 0.2s}
+select:focus,input:focus,textarea:focus{border-color:var(--blue)}
+.btn{padding:0.38rem 0.85rem;border-radius:var(--r);border:none;font-size:0.76rem;font-weight:500;transition:all 0.2s;cursor:pointer}
+.btn-primary{background:var(--gold);color:#0F2318;font-weight:600}.btn-primary:hover{background:#b8943e}
+.btn-ghost{background:transparent;border:1px solid var(--border);color:var(--text)}.btn-ghost:hover{border-color:var(--blue2);color:var(--blue2)}
+.btn-green{background:var(--green);color:#fff}
+.btn-amber{background:var(--amber);color:#000}
+.btn-red{background:transparent;border:1px solid var(--red);color:var(--red)}
+.btn-gold{background:var(--gold);color:#000}
+.btn-sm{padding:0.22rem 0.55rem;font-size:0.7rem}
+.btn-purple{background:var(--purple);color:#fff}
+
+/* PANELS */
+.panel{background:var(--bg2);border:1px solid var(--border);border-radius:var(--r);padding:1rem;margin-bottom:1rem}
+.panel h3{font-size:0.68rem;letter-spacing:0.14em;text-transform:uppercase;color:var(--muted);margin-bottom:0.7rem}
+.info{background:rgba(201,168,76,0.08);border:1px solid rgba(201,168,76,0.2);border-radius:var(--r);padding:0.6rem 0.9rem;font-size:0.78rem;color:var(--gold);margin-bottom:0.8rem}
+.warn{background:rgba(251,188,4,0.08);border:1px solid rgba(251,188,4,0.2);border-radius:var(--r);padding:0.6rem 0.9rem;font-size:0.78rem;color:var(--amber);margin-bottom:0.8rem}
+.success{background:rgba(52,168,83,0.08);border:1px solid rgba(52,168,83,0.2);border-radius:var(--r);padding:0.6rem 0.9rem;font-size:0.78rem;color:var(--green);margin-bottom:0.8rem}
+
+/* STATS */
+.stat-grid{display:grid;grid-template-columns:repeat(5,1fr);gap:0.8rem;margin-bottom:1.2rem}
+.stat-card{background:var(--bg2);border:1px solid var(--border);border-radius:var(--r);padding:0.8rem}
+.stat-label{font-size:0.62rem;letter-spacing:0.1em;text-transform:uppercase;color:var(--muted);margin-bottom:0.25rem}
+.stat-val{font-size:1.6rem;font-weight:300;line-height:1}
+.stat-sub{font-size:0.65rem;color:var(--muted);margin-top:0.2rem}
+
+/* PIPELINE KANBAN */
+.kanban{display:grid;grid-template-columns:repeat(4,1fr);gap:0.8rem;margin-bottom:1rem}
+.kanban-col{background:var(--bg2);border:1px solid var(--border);border-radius:var(--r);min-height:200px}
+.kanban-header{padding:0.6rem 0.8rem;border-bottom:1px solid var(--border);font-size:0.68rem;letter-spacing:0.1em;text-transform:uppercase;font-weight:600;display:flex;align-items:center;justify-content:space-between}
+.kanban-body{padding:0.5rem}
+.kanban-card{background:var(--bg3);border:1px solid var(--border);border-radius:var(--r);padding:0.6rem 0.7rem;margin-bottom:0.4rem;cursor:pointer;transition:border-color 0.15s;font-size:0.8rem}
+.kanban-card:hover{border-color:var(--gold)}
+.kanban-card-company{font-weight:600;margin-bottom:0.2rem;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.kanban-card-meta{font-size:0.7rem;color:var(--muted)}
+
+/* TABLE */
+.tbl-wrap{background:var(--bg2);border:1px solid var(--border);border-radius:var(--r);overflow:hidden;margin-bottom:1rem}
+.tbl-hdr{display:flex;align-items:center;justify-content:space-between;padding:0.65rem 0.9rem;border-bottom:1px solid var(--border)}
+.tbl-title{font-size:0.7rem;font-weight:600;letter-spacing:0.1em;text-transform:uppercase;color:var(--muted)}
+table{width:100%;border-collapse:collapse}
+thead tr{background:var(--bg3)}
+th{padding:0.5rem 0.7rem;text-align:left;font-size:0.63rem;letter-spacing:0.1em;text-transform:uppercase;color:var(--muted);white-space:nowrap}
+td{padding:0.48rem 0.7rem;border-top:1px solid rgba(30,45,80,0.4);font-size:0.79rem;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;max-width:180px}
+tr:hover td{background:rgba(26,115,232,0.04)}
+.pill{padding:2px 7px;border-radius:8px;font-size:0.65rem;font-weight:600}
+.p-sent{background:rgba(26,115,232,0.2);color:var(--blue2)}
+.p-bounced{background:rgba(234,67,53,0.15);color:var(--red)}
+.p-noresp{background:rgba(107,127,168,0.2);color:var(--muted)}
+.p-warm{background:rgba(251,188,4,0.2);color:#f0a500}
+.p-interested{background:rgba(201,168,76,0.2);color:var(--gold)}
+.p-closed{background:rgba(52,168,83,0.2);color:var(--green)}
+.p-agtsent{background:rgba(124,58,237,0.2);color:#a78bfa}
+.p-agtsigned{background:rgba(52,168,83,0.3);color:#34a853}
+.p-active{background:rgba(26,115,232,0.3);color:var(--blue2)}
+.p-delivered{background:rgba(52,168,83,0.4);color:#34a853}
+.p-upsell{background:rgba(201,168,76,0.3);color:var(--gold)}
+.p-unsub{background:rgba(234,67,53,0.2);color:var(--red)}
+.p-new{background:rgba(26,115,232,0.15);color:var(--blue2)}
+
+/* EMAIL COMPOSER */
+.email-composer{background:var(--bg3);border:1px solid var(--border);border-radius:var(--r);overflow:hidden}
+.email-composer-header{padding:0.5rem 0.8rem;border-bottom:1px solid var(--border);font-size:0.7rem;color:var(--muted);display:flex;gap:0.5rem;align-items:center}
+.email-composer textarea{width:100%;background:transparent;border:none;color:var(--text);padding:0.8rem;font-size:0.82rem;resize:none;outline:none;min-height:200px;line-height:1.6}
+.email-composer-footer{padding:0.5rem 0.8rem;border-top:1px solid var(--border);display:flex;gap:0.5rem;align-items:center}
+
+/* AI CHAT */
+.ai-messages{height:300px;overflow-y:auto;padding:0.8rem;display:flex;flex-direction:column;gap:0.6rem}
+.ai-msg{padding:0.6rem 0.8rem;border-radius:var(--r);font-size:0.82rem;line-height:1.6;max-width:90%}
+.ai-msg.user{background:rgba(26,115,232,0.15);align-self:flex-end;color:var(--blue2)}
+.ai-msg.ai{background:var(--bg3);border:1px solid var(--border);align-self:flex-start}
+.ai-msg.system{background:rgba(52,168,83,0.08);border:1px solid rgba(52,168,83,0.2);color:var(--green);font-size:0.72rem;align-self:center}
+.ai-input-row{display:flex;gap:0.5rem;padding:0.6rem}
+.ai-input-row input{flex:1}
+
+/* SCRIPT VIEWER */
+.script-card{background:var(--bg2);border:1px solid var(--border);border-left:3px solid var(--gold);border-radius:var(--r);padding:0.9rem;margin-bottom:0.8rem}
+.script-card h4{font-size:0.72rem;letter-spacing:0.1em;text-transform:uppercase;color:var(--gold);margin-bottom:0.5rem}
+.script-card p{font-size:0.82rem;line-height:1.7;color:var(--text);white-space:pre-wrap}
+
+/* DOC EDITOR */
+.doc-editor{background:var(--bg3);border:1px solid var(--border);border-radius:var(--r)}
+.doc-toolbar{padding:0.5rem 0.8rem;border-bottom:1px solid var(--border);display:flex;gap:0.4rem;flex-wrap:wrap;align-items:center}
+.doc-body{padding:1rem;min-height:400px}
+.doc-body textarea{width:100%;background:transparent;border:none;color:var(--text);font-size:0.85rem;line-height:1.8;resize:none;outline:none;min-height:380px}
+
+/* ONBOARDING */
+.ob-card{background:var(--bg2);border:1px solid var(--border);border-left:3px solid var(--blue);border-radius:var(--r);padding:1rem;margin-bottom:0.8rem}
+.ob-card.gold{border-left-color:var(--gold)}
+.ob-card.green{border-left-color:var(--green)}
+.ob-card.purple{border-left-color:var(--purple)}
+.ob-card h3{font-size:0.85rem;font-weight:600;margin-bottom:0.5rem;color:var(--text)}
+.ob-card p{font-size:0.8rem;color:var(--muted);line-height:1.7}
+
+/* MODAL */
+.modal-overlay{position:fixed;top:0;left:0;right:0;bottom:0;background:rgba(0,0,0,0.6);z-index:200;display:flex;align-items:center;justify-content:center}
+.modal{background:var(--bg2);border:1px solid var(--border);border-radius:calc(var(--r)*2);padding:1.5rem;width:600px;max-width:95vw;max-height:85vh;overflow-y:auto;position:relative}
+.modal h2{font-size:1rem;font-weight:600;margin-bottom:1rem;color:var(--text)}
+.modal-close{position:absolute;top:1rem;right:1rem;background:none;border:none;color:var(--muted);font-size:1.2rem;cursor:pointer}
+.field-group{display:flex;flex-direction:column;gap:0.3rem;margin-bottom:0.8rem}
+.field-group label{font-size:0.65rem;letter-spacing:0.1em;text-transform:uppercase;color:var(--muted)}
+.field-group input,.field-group select,.field-group textarea{width:100%}
+.two-col{display:grid;grid-template-columns:1fr 1fr;gap:0.8rem}
+.three-col{display:grid;grid-template-columns:1fr 1fr 1fr;gap:0.8rem}
+
+/* MINI BAR */
+.bar-chart{display:flex;flex-direction:column;gap:0.3rem}
+.bar-row{display:flex;align-items:center;gap:0.5rem;font-size:0.7rem}
+.bar-lbl{width:100px;color:var(--muted);overflow:hidden;text-overflow:ellipsis;white-space:nowrap;flex-shrink:0}
+.bar-track{flex:1;background:var(--bg3);border-radius:2px;height:5px}
+.bar-fill{height:100%;border-radius:2px;transition:width 0.4s}
+.bar-cnt{color:var(--muted);min-width:20px;text-align:right}
+
+/* SETTINGS */
+.settings-section{background:var(--bg2);border:1px solid var(--border);border-radius:var(--r);padding:1rem;margin-bottom:1rem}
+.settings-section h3{font-size:0.7rem;letter-spacing:0.12em;text-transform:uppercase;color:var(--muted);margin-bottom:0.8rem;padding-bottom:0.5rem;border-bottom:1px solid var(--border)}
+.settings-row{display:flex;align-items:center;justify-content:space-between;padding:0.4rem 0;border-bottom:1px solid rgba(30,45,80,0.3);font-size:0.82rem}
+.settings-row:last-child{border-bottom:none}
+.settings-row label{color:var(--muted);font-size:0.75rem}
+.settings-row input{width:320px}
+.status-dot{width:8px;height:8px;border-radius:50%;display:inline-block;margin-right:6px}
+.dot-green{background:var(--green)}
+.dot-red{background:var(--red)}
+.dot-amber{background:var(--amber)}
+
+/* EMPTY */
+.empty{text-align:center;padding:3rem;color:var(--muted)}
+.empty h3{color:var(--text);margin-bottom:0.3rem;font-size:0.95rem}
+</style>
+</head>
+<body>
+
+<!-- TOP BAR -->
+<div class="topbar">
+  <div class="brand">
+    <div>
+      <div class="brand-name" style="color:var(--gold);letter-spacing:0.1em">EIGENVALUE <span style="color:var(--muted);font-weight:300">CRM</span></div>
+    </div>
+  </div>
+  <div class="topbar-right">
+    <div class="topbar-stat"><b id="ts-total" style="color:var(--blue2)">0</b>Total Leads</div>
+    <div class="topbar-stat"><b id="ts-frank" style="color:var(--amber)">0</b>Frank Active</div>
+    <div class="topbar-stat"><b id="ts-sarah" style="color:var(--purple)">0</b>Sarah Active</div>
+    <div class="topbar-stat"><b id="ts-revenue" style="color:var(--gold)">$0</b>Pipeline</div>
+    <div id="conn-status" style="font-size:0.7rem;color:var(--muted)"><span class="status-dot dot-amber"></span>Connecting...</div>
+  </div>
+</div>
+
+<!-- TABS -->
+<div class="tabs">
+  <div class="tab active" onclick="showTab('pipeline')">Pipeline</div>
+  <div class="tab" onclick="showTab('frank')">Frank <span class="badge" id="frank-badge">0</span></div>
+  <div class="tab" onclick="showTab('sarah')">Sarah <span class="badge purple" id="sarah-badge">0</span></div>
+  <div class="tab" onclick="showTab('ai')">AI Assist</div>
+  <div class="tab" onclick="showTab('docs')">Documents</div>
+  <div class="tab" onclick="showTab('scripts')">Scripts</div>
+  <div class="tab" onclick="showTab('onboarding')">Onboarding</div>
+  <div class="tab" onclick="showTab('settings')">Settings</div>
+</div>
+
+<!-- MAIN -->
+<div class="main">
+
+  <!-- SIDEBAR -->
+  <div class="sidebar">
+    <div class="sb-sec">Quick Status</div>
+    <div class="sb-item active" onclick="setSideFilter('all',this)">All Leads <span class="sb-cnt" id="sf-all">0</span></div>
+    <div class="sb-item" onclick="setSideFilter('warm',this)">Warm <span class="sb-cnt" id="sf-warm">0</span></div>
+    <div class="sb-item" onclick="setSideFilter('interested',this)">Interested <span class="sb-cnt" id="sf-interested">0</span></div>
+    <div class="sb-item" onclick="setSideFilter('active',this)">Active Projects <span class="sb-cnt" id="sf-active">0</span></div>
+    <div class="sb-item" onclick="setSideFilter('delivered',this)">Delivered <span class="sb-cnt" id="sf-delivered">0</span></div>
+    <div class="sb-sec">By Product</div>
+    <div class="sb-item" onclick="setSideFilter('Architecture',this)">Architecture <span class="sb-cnt" id="sf-arch">0</span></div>
+    <div class="sb-item" onclick="setSideFilter('Blueprint',this)">Blueprint <span class="sb-cnt" id="sf-blue">0</span></div>
+    <div class="sb-item" onclick="setSideFilter('Nucleus',this)">Nucleus <span class="sb-cnt" id="sf-nuc">0</span></div>
+    <div class="sb-sec">By Owner</div>
+    <div class="sb-item" onclick="setSideFilter('frank',this)">Frank <span class="sb-cnt" id="sf-frank">0</span></div>
+    <div class="sb-item" onclick="setSideFilter('sarah',this)">Sarah <span class="sb-cnt" id="sf-sarah">0</span></div>
+    <div class="sb-sec">Flags</div>
+    <div class="sb-item" onclick="setSideFilter('bounced',this)" style="color:var(--red)">Bounced <span class="sb-cnt" id="sf-bounced">0</span></div>
+    <div class="sb-item" onclick="setSideFilter('unsubscribed',this)" style="color:var(--red)">Unsubscribed <span class="sb-cnt" id="sf-unsub">0</span></div>
+  </div>
+
+  <!-- CONTENT -->
+  <div class="content">
+
+    <!-- PIPELINE -->
+    <div id="tab-pipeline" class="page active">
+      <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:1rem;flex-wrap:wrap;gap:0.5rem">
+        <div style="font-size:0.85rem;font-weight:600;color:var(--text)">Lead Pipeline</div>
+        <div style="display:flex;gap:0.5rem;flex-wrap:wrap">
+          <button class="btn btn-ghost btn-sm" onclick="syncFromLIPC()">&#8635; Sync from LIPC</button>
+          <button class="btn btn-gold btn-sm" onclick="document.getElementById('lipc-csv-input').click()">&#8593; Import LIPC CSV</button>
+          <input type="file" id="lipc-csv-input" accept=".csv" style="display:none" onchange="importFromLIPCcsv(this)"/>
+          <button class="btn btn-primary btn-sm" onclick="openAddLead()">+ Add Lead</button>
+        </div>
+      </div>
+      <div class="stat-grid">
+        <div class="stat-card"><div class="stat-label">Total</div><div class="stat-val" id="d-total" style="color:var(--blue2)">0</div><div class="stat-sub">all leads</div></div>
+        <div class="stat-card"><div class="stat-label">Frank Active</div><div class="stat-val" id="d-frank" style="color:var(--amber)">0</div><div class="stat-sub">in sequence</div></div>
+        <div class="stat-card"><div class="stat-label">Sarah Active</div><div class="stat-val" id="d-sarah" style="color:var(--purple)">0</div><div class="stat-sub">legal/mgmt</div></div>
+        <div class="stat-card"><div class="stat-label">Delivered</div><div class="stat-val" id="d-delivered" style="color:var(--green)">0</div><div class="stat-sub">projects done</div></div>
+        <div class="stat-card"><div class="stat-label">Pipeline $</div><div class="stat-val" id="d-pipeline" style="color:var(--gold)">$0</div><div class="stat-sub">est. value</div></div>
+      </div>
+      <!-- Kanban -->
+      <div class="kanban" id="kanban-board"></div>
+      <!-- Full table -->
+      <div class="tbl-wrap">
+        <div class="tbl-hdr">
+          <span class="tbl-title" id="pipeline-count">0 leads</span>
+          <div style="display:flex;gap:0.4rem">
+            <select id="f-product" onchange="applyFilters()" style="font-size:0.72rem;padding:0.25rem 0.4rem">
+              <option value="">All Products</option>
+              <option>Architecture</option><option>Blueprint</option><option>Nucleus</option>
+            </select>
+            <select id="f-owner" onchange="applyFilters()" style="font-size:0.72rem;padding:0.25rem 0.4rem">
+              <option value="">All Owners</option>
+              <option value="frank">Frank</option><option value="sarah">Sarah</option>
+            </select>
+            <input type="text" id="f-search" placeholder="Search..." style="width:140px;font-size:0.72rem;padding:0.25rem 0.4rem" oninput="applyFilters()"/>
+          </div>
+        </div>
+        <div style="overflow-x:auto">
+          <table>
+            <thead><tr>
+              <th>Company</th><th>Contact</th><th>Product</th>
+              <th>Status</th><th>Owner</th><th>Industry</th>
+              <th>Last Action</th><th>Date In</th><th>Actions</th>
+            </tr></thead>
+            <tbody id="pipeline-tbody"></tbody>
+          </table>
+        </div>
+      </div>
+    </div>
+
+    <!-- FRANK TAB -->
+    <div id="tab-frank" class="page">
+      <div class="info">Frank's active leads — select a lead to compose email or update status. All emails send from rfrank@eigenvalueconsulting.com via Microsoft Graph.</div>
+      <div style="display:flex;gap:0.5rem;margin-bottom:0.8rem;align-items:center;flex-wrap:wrap">
+        <button class="btn btn-primary btn-sm" onclick="bulkSendAll()">⚡ Send All Selected</button>
+        <button class="btn btn-ghost btn-sm" onclick="frankSelectAll()">Select All</button>
+        <button class="btn btn-ghost btn-sm" onclick="frankClearAll()">Clear</button>
+        <span style="font-size:0.72rem;color:var(--muted)" id="bulk-status">Select leads below then click Send All</span>
+        <div style="margin-left:auto;display:flex;gap:0.4rem">
+          <select id="frank-filter-product" onchange="renderFrank()" style="font-size:0.72rem;padding:0.22rem 0.4rem">
+            <option value="">All Products</option>
+            <option>Architecture</option><option>Blueprint</option><option>Nucleus</option>
+          </select>
+          <select id="frank-filter-status" onchange="renderFrank()" style="font-size:0.72rem;padding:0.22rem 0.4rem">
+            <option value="">All Status</option>
+            <option value="sent">Sent</option>
+            <option value="warm">Warm</option>
+            <option value="interested">Interested</option>
+            <option value="no_response">No Response</option>
+          </select>
+        </div>
+      </div>
+      <div style="display:grid;grid-template-columns:1fr 1.6fr;gap:1rem">
+        <div>
+          <div class="panel">
+            <h3>Frank's Active Leads</h3>
+            <div id="frank-leads-list"></div>
+          </div>
+        </div>
+        <div>
+          <div class="panel" id="frank-composer-panel">
+            <h3>Email Composer</h3>
+            <div class="warn">Select a lead from the list to compose an email.</div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- SARAH TAB -->
+    <div id="tab-sarah" class="page">
+      <div class="info" style="border-color:rgba(124,58,237,0.3);background:rgba(124,58,237,0.08);color:#a78bfa">Sarah's leads — agreements, solution scoping, account management. Emails send from sarah@maxeconsulting.com.</div>
+      <div style="display:grid;grid-template-columns:1fr 1.6fr;gap:1rem">
+        <div>
+          <div class="panel">
+            <h3>Sarah's Active Leads</h3>
+            <div id="sarah-leads-list"></div>
+          </div>
+        </div>
+        <div>
+          <div class="panel" id="sarah-composer-panel">
+            <h3>Email Composer</h3>
+            <div class="warn" style="border-color:rgba(124,58,237,0.3);background:rgba(124,58,237,0.08);color:#a78bfa">Select a lead from the list to compose an email.</div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- AI ASSIST -->
+    <div id="tab-ai" class="page">
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:1rem">
+        <div class="panel" style="display:flex;flex-direction:column">
+          <h3>AI Assistant — Powered by Claude</h3>
+          <div style="margin-bottom:0.6rem;display:flex;gap:0.4rem;flex-wrap:wrap">
+            <select id="ai-lead-ctx" style="flex:1;min-width:150px">
+              <option value="">No lead context</option>
+            </select>
+            <select id="ai-agent" style="width:100px">
+              <option value="frank">Frank</option>
+              <option value="sarah">Sarah</option>
+            </select>
+          </div>
+          <div class="ai-messages" id="ai-messages">
+            <div class="ai-msg system">Claude is ready. Select a lead for context, choose Frank or Sarah, and ask anything.</div>
+          </div>
+          <div class="ai-input-row">
+            <input type="text" id="ai-input" placeholder="What do I say to this lead? How do I handle this objection?" onkeydown="if(event.key==='Enter')sendAI()"/>
+            <button class="btn btn-primary btn-sm" onclick="sendAI()">Send</button>
+          </div>
+        </div>
+        <div class="panel">
+          <h3>Quick Prompts</h3>
+          <div style="display:flex;flex-direction:column;gap:0.4rem">
+            <button class="btn btn-ghost btn-sm" style="text-align:left" onclick="quickPrompt('They said they\'re maybe interested but want to know more about the process. How do I respond?')">Maybe interested — what do I say?</button>
+            <button class="btn btn-ghost btn-sm" style="text-align:left" onclick="quickPrompt('They asked about pricing before agreeing to the diagnostic. How do I handle this?')">Pricing objection</button>
+            <button class="btn btn-ghost btn-sm" style="text-align:left" onclick="quickPrompt('They said they don\'t have time right now. How do I keep the door open?')">No time right now</button>
+            <button class="btn btn-ghost btn-sm" style="text-align:left" onclick="quickPrompt('They want to know what the dashboard looks like before committing. What do I tell them?')">They want to see the product first</button>
+            <button class="btn btn-ghost btn-sm" style="text-align:left" onclick="quickPrompt('The diagnostic is done and they loved it. How does Sarah introduce the solution conversation?')">Transition to solution (Sarah)</button>
+            <button class="btn btn-ghost btn-sm" style="text-align:left" onclick="quickPrompt('They signed the agreement but haven\'t paid the deposit. How does Sarah follow up?')">Agreement signed, no deposit</button>
+            <button class="btn btn-ghost btn-sm" style="text-align:left" onclick="quickPrompt('The project is delivered and they\'re happy. What does Frank send as a close email?')">Post-delivery close email</button>
+            <button class="btn btn-ghost btn-sm" style="text-align:left" onclick="quickPrompt('They want a discount. How do I respond without giving one?')">Discount request</button>
+          </div>
+          <div class="panel" style="margin-top:1rem;margin-bottom:0">
+            <h3>Document Editor with AI</h3>
+            <div style="font-size:0.78rem;color:var(--muted);margin-bottom:0.6rem">Paste any section of a document. Ask Claude to edit, improve, or rewrite it.</div>
+            <textarea id="doc-ai-input" style="width:100%;min-height:80px;padding:0.5rem;font-size:0.78rem;resize:vertical" placeholder="Paste document section here..."></textarea>
+            <input type="text" id="doc-ai-instruction" style="width:100%;margin-top:0.4rem" placeholder="Instruction: make this more formal, shorter, fill in client name..."/>
+            <div style="margin-top:0.5rem;display:flex;gap:0.4rem">
+              <button class="btn btn-primary btn-sm" onclick="editDoc()">Edit with Claude</button>
+              <button class="btn btn-ghost btn-sm" onclick="copyDocResult()">Copy Result</button>
+            </div>
+            <div id="doc-ai-result" style="margin-top:0.6rem;background:var(--bg3);border:1px solid var(--border);border-radius:var(--r);padding:0.6rem;font-size:0.8rem;line-height:1.7;min-height:60px;display:none"></div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- DOCUMENTS -->
+    <div id="tab-docs" class="page">
+      <div class="info" style="margin-bottom:0.8rem">
+        <strong>Sarah's workflow:</strong> When Frank closes a lead, Sarah sends a short warm email with the application PDF attached. 
+        Client fills it out and sends it back. Agreement is locked until attorney approves — Sarah sends application only for now.
+        Download the PDF and Word application files below to attach manually to emails.
+      </div>
+      <div class="info" style="border-color:rgba(201,168,76,0.3);background:rgba(201,168,76,0.06);color:var(--gold);margin-bottom:0.8rem;font-size:0.78rem">
+        Upload your application PDF and Word file using the Upload button in the sidebar. They save permanently in your browser. 
+        When Sarah sends an email, download from here and attach manually in Outlook.
+      </div>
+      <div style="display:flex;gap:0.5rem;margin-bottom:1rem;flex-wrap:wrap;align-items:center">
+        <select id="doc-lead-select" style="flex:1;min-width:200px" onchange="loadDocLead()">
+          <option value="">Select lead to auto-fill...</option>
+        </select>
+        <button class="btn btn-gold btn-sm" onclick="autofillDocs()">Auto-fill from Lead</button>
+        <button class="btn btn-ghost btn-sm" onclick="exportDocWord()">Export Word</button>
+        <button class="btn btn-ghost btn-sm" onclick="copyDocText()">Copy Text</button>
+      </div>
+      <div style="display:grid;grid-template-columns:180px 1fr;gap:1rem">
+        <div>
+          <div class="panel" style="padding:0.6rem">
+            <h3>Documents</h3>
+            <div class="sb-item active" onclick="loadDoc('application')" id="doc-btn-application">Application Form</div>
+            <div class="sb-item" onclick="loadDoc('engagement')" id="doc-btn-engagement">Engagement Letter</div>
+            <div class="sb-item" onclick="loadDoc('agreement')" id="doc-btn-agreement" style="color:var(--red);opacity:0.7">&#128274; Agreement (locked)</div>
+            <div style="margin-top:1rem;padding-top:0.8rem;border-top:1px solid var(--border)">
+              <div style="font-size:0.62rem;letter-spacing:0.15em;text-transform:uppercase;color:var(--muted);margin-bottom:0.4rem">Upload Final Docs</div>
+              <label class="sb-item" style="cursor:pointer;color:var(--muted)">
+                + Upload .docx / .pdf
+                <input type="file" accept=".pdf,.docx,.doc" style="display:none" onchange="uploadFinalDoc(this)"/>
+              </label>
+              <div id="uploaded-docs-list" style="margin-top:0.3rem"></div>
+            </div>
+          </div>
+        </div>
+        <div>
+          <div class="doc-editor">
+            <div class="doc-toolbar">
+              <span style="font-size:0.7rem;color:var(--muted);flex:1" id="doc-current-name">Application Form</span>
+              <button class="btn btn-ghost btn-sm" onclick="resetDoc()">Reset to Template</button>
+            </div>
+            <div class="doc-body">
+              <textarea id="doc-textarea" onchange="saveDocEdits()"></textarea>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- SCRIPTS -->
+    <div id="tab-scripts" class="page">
+      <div style="display:flex;gap:0.5rem;margin-bottom:1rem">
+        <button class="btn btn-ghost btn-sm active" onclick="showScripts('architecture',this)" id="script-btn-arch">Architecture</button>
+        <button class="btn btn-ghost btn-sm" onclick="showScripts('blueprint',this)" id="script-btn-blue">Blueprint</button>
+        <button class="btn btn-ghost btn-sm" onclick="showScripts('nucleus',this)" id="script-btn-nuc">Nucleus</button>
+        <button class="btn btn-ghost btn-sm" onclick="showScripts('sarah',this)" id="script-btn-sarah">Sarah — Legal</button>
+        <button class="btn btn-ghost btn-sm" onclick="showScripts('followup',this)" id="script-btn-fu">Follow-up</button>
+      </div>
+      <div id="scripts-content"></div>
+    </div>
+
+    <!-- ONBOARDING -->
+    <div id="tab-onboarding" class="page">
+      <div style="display:flex;gap:0.5rem;margin-bottom:1rem">
+        <button class="btn btn-ghost btn-sm" onclick="showOnboarding('frank',this)">Frank</button>
+        <button class="btn btn-ghost btn-sm" onclick="showOnboarding('sarah',this)">Sarah</button>
+        <button class="btn btn-ghost btn-sm" onclick="showOnboarding('products',this)">Products</button>
+        <button class="btn btn-ghost btn-sm" onclick="showOnboarding('rules',this)">Rules</button>
+      </div>
+      <div id="onboarding-content"></div>
+    </div>
+
+    <!-- SETTINGS -->
+    <div id="tab-settings" class="page">
+      <div class="settings-section">
+        <h3>Microsoft Graph — Email (M365)</h3>
+        <div class="success" id="graph-status">Configured — eigenvalue-crm app registered</div>
+        <div class="settings-row"><label>Client ID</label><input type="password" id="s-client-id" placeholder="Paste Client ID..."/></div>
+        <div class="settings-row"><label>Tenant ID</label><input type="password" id="s-tenant-id" placeholder="Paste Tenant ID..."/></div>
+        <div class="settings-row"><label>Client Secret</label><input type="password" id="s-client-secret" placeholder="Paste Client Secret..."/></div>
+        <div class="settings-row"><label>Frank's email</label><input type="text" id="s-frank-email" value="rfrank@eigenvalueconsulting.com"/></div>
+        <div class="settings-row"><label>Sarah's email</label><input type="text" id="s-sarah-email" value="sarah@maxeconsulting.com"/></div>
+        <div class="settings-row"><label>Notify Maii at</label><input type="text" id="s-notify-email" value="max@maxeconsulting.com"/></div>
+        <div style="margin-top:0.8rem;display:flex;gap:0.5rem">
+          <button class="btn btn-primary btn-sm" onclick="saveSettings()">Save Settings</button>
+          <button class="btn btn-ghost btn-sm" onclick="testEmail()">Test Email Send</button>
+        </div>
+      </div>
+      <div class="settings-section">
+        <h3>Supabase — Database</h3>
+        <div class="settings-row"><label>Project URL</label><input type="text" id="s-supa-url" placeholder="https://xxxx.supabase.co" id="s-supa-url"/></div>
+        <div class="settings-row"><label>Anon Key <span id="supa-saved-indicator" style="color:var(--green);font-size:0.7rem;margin-left:4px"></span></label><input type="password" id="s-supa-key" placeholder="sb_publishable_..."/></div>
+        <div class="settings-row" style="margin-top:0.5rem;border-bottom:none">
+          <span id="supa-conn-status" style="font-size:0.78rem;color:var(--muted)">Checking...</span>
+          <div style="display:flex;gap:0.4rem">
+            <button class="btn btn-primary btn-sm" onclick="saveSupabase()">Save Supabase Keys</button>
+            <button class="btn btn-ghost btn-sm" onclick="checkSupabase()">Test Connection</button>
+          </div>
+        </div>
+      </div>
+      <div class="settings-section">
+        <h3>Resend — Email Notifications</h3>
+        <div class="settings-row"><label>API Key</label><input type="password" id="s-resend-key" placeholder="re_XXXX — paste after signing up at resend.com" id="s-resend-key"/></div>
+      </div>
+      <div class="settings-section">
+        <h3>Twilio — SMS (Reserved)</h3>
+        <div class="settings-section">
+        <h3>AI Assist — Vercel Proxy Setup</h3>
+        <div class="info" style="font-size:0.78rem;margin-bottom:0.8rem">
+          AI Assist requires a Vercel serverless function to proxy Claude API calls. 
+          Create a file <strong>api/ai.js</strong> in your CRM GitHub repo with the code below, 
+          then add <strong>ANTHROPIC_KEY</strong> as a Vercel environment variable.
+        </div>
+        <div style="background:var(--bg);border:1px solid var(--border);border-radius:var(--r);padding:0.8rem;font-size:0.72rem;font-family:monospace;color:var(--muted);line-height:1.8;white-space:pre-wrap">export default async function handler(req, res) {
+  res.setHeader('Access-Control-Allow-Origin', '*');
+  if (req.method === 'OPTIONS') return res.status(200).end();
+  const r = await fetch('https://api.anthropic.com/v1/messages', {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+      'x-api-key': process.env.ANTHROPIC_KEY,
+      'anthropic-version': '2023-06-01'
+    },
+    body: JSON.stringify({
+      model: 'claude-sonnet-4-20250514',
+      max_tokens: 1000,
+      ...req.body
+    })
+  });
+  const data = await r.json();
+  res.status(200).json(data);
+}</div>
+        <div style="margin-top:0.8rem;font-size:0.78rem;color:var(--muted)">
+          After adding api/ai.js to GitHub: Vercel → Project Settings → Environment Variables → add <strong>ANTHROPIC_KEY</strong> = your Claude API key
+        </div>
+      </div>
+      <div class="settings-section">
+        <h3>Twilio — SMS (Reserved)</h3>
+        <div class="warn" style="margin-bottom:0.5rem">SMS integration reserved for future use. Configure when Twilio virtual phone is purchased.</div>
+        <div class="settings-row"><label>Account SID</label><input type="text" placeholder="ACxxxxxxxxxxxxxxxx — not yet configured" id="s-twilio-sid"/></div>
+        <div class="settings-row"><label>Auth Token</label><input type="password" placeholder="Not yet configured" id="s-twilio-token"/></div>
+        <div class="settings-row"><label>Virtual Phone</label><input type="text" placeholder="+1 (xxx) xxx-xxxx — not yet purchased" id="s-twilio-phone"/></div>
+      </div>
+      <div class="settings-section">
+        <h3>LIPC Connection</h3>
+        <div class="info">LIPC and CRM share the same Supabase database. Leads approved in LIPC appear here automatically when you click "Sync from LIPC" on the Pipeline tab.</div>
+        <div class="settings-row"><label>LIPC URL</label><input type="text" value="https://lipc.vercel.app"/></div>
+      </div>
+    </div>
+
+  </div><!-- /content -->
+</div><!-- /main -->
+
+<!-- ADD LEAD MODAL -->
+<div id="modal-add" class="modal-overlay" style="display:none">
+  <div class="modal">
+    <button class="modal-close" onclick="closeModal('modal-add')">×</button>
+    <h2>Add Lead</h2>
+    <div class="two-col">
+      <div class="field-group"><label>Company</label><input type="text" id="add-company"/></div>
+      <div class="field-group"><label>First Name</label><input type="text" id="add-fname"/></div>
+    </div>
+    <div class="two-col">
+      <div class="field-group"><label>Email</label><input type="email" id="add-email"/></div>
+      <div class="field-group"><label>Phone</label><input type="text" id="add-phone"/></div>
+    </div>
+    <div class="three-col">
+      <div class="field-group"><label>Product</label>
+        <select id="add-product"><option>Architecture</option><option>Blueprint</option><option>Nucleus</option></select>
+      </div>
+      <div class="field-group"><label>Industry</label><input type="text" id="add-industry"/></div>
+      <div class="field-group"><label>State</label><input type="text" id="add-state"/></div>
+    </div>
+    <div class="two-col">
+      <div class="field-group"><label>Status</label>
+        <select id="add-status">
+          <option value="sent">Sent</option><option value="warm">Warm</option>
+          <option value="interested">Interested</option>
+        </select>
+      </div>
+      <div class="field-group"><label>Assigned to</label>
+        <select id="add-owner"><option value="frank">Frank</option><option value="sarah">Sarah</option></select>
+      </div>
+    </div>
+    <div class="field-group"><label>Notes</label><textarea id="add-notes" style="min-height:80px"></textarea></div>
+    <div style="display:flex;gap:0.5rem;justify-content:flex-end;margin-top:0.5rem">
+      <button class="btn btn-ghost" onclick="closeModal('modal-add')">Cancel</button>
+      <button class="btn btn-primary" onclick="addLead()">Add Lead</button>
+    </div>
+  </div>
+</div>
+
+<!-- LEAD DETAIL MODAL -->
+<div id="modal-lead" class="modal-overlay" style="display:none">
+  <div class="modal" style="width:700px">
+    <button class="modal-close" onclick="closeModal('modal-lead')">×</button>
+    <h2 id="modal-lead-title">Lead Detail</h2>
+    <div id="modal-lead-body"></div>
+  </div>
+</div>
+
+<script>
+// ── Config ────────────────────────────────────────────────────────
+const SUPA_URL = localStorage.getItem('crm_supa_url') || '';
+const SUPA_KEY = localStorage.getItem('crm_supa_key') || '';
+const M365_CLIENT_ID = ''; // Paste in Settings tab
+const M365_TENANT_ID = ''; // Paste in Settings tab
+// Note: client secret stored in settings only, never in code for production
+// For the Vercel proxy approach, store as environment variable GRAPH_SECRET
+
+const FRANK_EMAIL = localStorage.getItem('crm_frank_email') || 'rfrank@eigenvalueconsulting.com';
+const SARAH_EMAIL = localStorage.getItem('crm_sarah_email') || 'sarah@maxeconsulting.com';
+const NOTIFY_EMAIL = 'max@maxeconsulting.com';
+const ANTHROPIC_KEY = ''; // Set in settings — calls go through Vercel proxy
+
+// ── State ─────────────────────────────────────────────────────────
+const _supaUrl = localStorage.getItem('crm_supa_url') || '';
+const _supaKey = localStorage.getItem('crm_supa_key') || '';
+const supa = (_supaUrl && _supaKey) ? supabase.createClient(_supaUrl, _supaKey) : null;
+let leads = JSON.parse(localStorage.getItem('crm_leads') || '[]');
+let filtered = [...leads];
+let sideFilter = 'all';
+let selectedLead = null;
+let aiHistory = [];
+let docEdits = JSON.parse(localStorage.getItem('crm_doc_edits') || '{}');
+
+// ── Status Config ─────────────────────────────────────────────────
+const STATUSES = {
+  sent:         {label:'Sent',         cls:'p-sent',    owner:'frank', next:['bounced','no_response','warm','unsubscribed']},
+  bounced:      {label:'Bounced',      cls:'p-bounced', owner:'frank', next:['sent']},
+  no_response:  {label:'No Response',  cls:'p-noresp',  owner:'frank', next:['warm','unsubscribed']},
+  warm:         {label:'Warm',         cls:'p-warm',    owner:'frank', next:['interested','no_response','unsubscribed']},
+  interested:   {label:'Interested',   cls:'p-interested',owner:'frank',next:['closed','unsubscribed']},
+  closed:       {label:'Closed → Sarah',cls:'p-closed', owner:'sarah', next:['agreement_sent']},
+  agreement_sent:{label:'Agreement Sent',cls:'p-agtsent',owner:'sarah',next:['agreement_signed','closed']},
+  agreement_signed:{label:'Agreement Signed',cls:'p-agtsigned',owner:'sarah',next:['active']},
+  active:       {label:'Active',       cls:'p-active',  owner:'sarah', next:['delivered']},
+  delivered:    {label:'Delivered',    cls:'p-delivered',owner:'frank',next:['upsell_ready','post_delivery']},
+  upsell_ready: {label:'Upsell Ready', cls:'p-upsell',  owner:'sarah', next:['active']},
+  post_delivery:{label:'Post Delivery',cls:'p-noresp',  owner:'frank', next:[]},
+  unsubscribed: {label:'Unsubscribed', cls:'p-unsub',   owner:null,    next:[]},
+};
+
+const KANBAN_COLS = [
+  {key:'frank_active', label:'Frank — Active', color:'var(--amber)', statuses:['sent','warm','interested']},
+  {key:'sarah_active', label:'Sarah — Active', color:'var(--purple)', statuses:['closed','agreement_sent','agreement_signed','active']},
+  {key:'delivered',    label:'Delivered',      color:'var(--green)',  statuses:['delivered','post_delivery','upsell_ready']},
+  {key:'cold',         label:'Cold / Flags',   color:'var(--muted)',  statuses:['bounced','no_response','unsubscribed']},
+];
+
+// ── Tab Navigation ────────────────────────────────────────────────
+function showTab(name) {
+  document.querySelectorAll('.page').forEach(p=>p.classList.remove('active'));
+  document.querySelectorAll('.tab').forEach(t=>t.classList.remove('active'));
+  document.getElementById('tab-'+name)?.classList.add('active');
+  const tabs=['pipeline','frank','sarah','ai','docs','scripts','onboarding','settings'];
+  document.querySelectorAll('.tab')[tabs.indexOf(name)]?.classList.add('active');
+  if(name==='pipeline'){applyFilters();renderKanban();}
+  if(name==='frank')renderFrank();
+  if(name==='sarah')renderSarah();
+  if(name==='scripts')showScripts('architecture',document.getElementById('script-btn-arch'));
+  if(name==='onboarding')showOnboarding('frank',null);
+  if(name==='docs'){populateDocLeadSelect();loadDoc('application');}
+}
+
+function setSideFilter(val,el){
+  sideFilter=val;
+  document.querySelectorAll('.sb-item').forEach(i=>i.classList.remove('active'));
+  if(el)el.classList.add('active');
+  applyFilters();renderKanban();
+}
+
+// ── Data ──────────────────────────────────────────────────────────
+function saveLeads(){
+  localStorage.setItem('crm_leads',JSON.stringify(leads));
+  // Supabase sync hook
+  // supa.from('crm_leads').upsert(leads,{onConflict:'id'});
+}
+
+async function syncFromLIPC(){
+  const btn = event.target;
+  btn.textContent='Syncing...';btn.disabled=true;
+  try {
+    const supaUrl2=localStorage.getItem('crm_supa_url')||'';
+    const supaKey2=localStorage.getItem('crm_supa_key')||'';
+    if(!supaUrl2||!supaKey2){alert('Add Supabase URL and Key in Settings first, then Save Settings');btn.textContent='Sync from LIPC';btn.disabled=false;return;}
+    const supaSync=supabase.createClient(supaUrl2,supaKey2);
+    const {data,error} = await supaSync.from('email_leads')
+      .select('*').eq('status','pushed').order('date_entered',{ascending:false});
+    if(error)throw error;
+    let added=0;
+    (data||[]).forEach(l=>{
+      const exists=leads.find(x=>x.email===l.email);
+      if(!exists){
+        leads.push({
+          id:l.id||crypto.randomUUID(),
+          company:l.company,first_name:l.first_name,email:l.email,
+          phone:l.phone||'',title:l.title||'',industry:l.industry||'',
+          state:l.state||'',postal_code:l.postal_code||'',
+          website:l.website||'',linkedin:l.linkedin||'',
+          product:guessProduct(l.industry||''),
+          status:'sent',owner:'frank',
+          lipc_score:l.score,date_entered:l.date_entered||new Date().toISOString().split('T')[0],
+          notes:'',email_sequence:0,
+          created_at:new Date().toISOString(),
+        });
+        added++;
+      }
+    });
+    saveLeads();applyFilters();renderKanban();updateStats();
+    btn.textContent='Sync from LIPC';btn.disabled=false;
+    alert(`Synced ${added} new leads from LIPC`);
+  } catch(e){
+    btn.textContent='Sync from LIPC';btn.disabled=false;
+    alert('Sync error: '+e.message);
+  }
+}
+
+function guessProduct(industry){
+  const ind=(industry||'').toLowerCase();
+  if(ind.includes('construct')||ind.includes('freight')||ind.includes('warehouse')||ind.includes('logistic'))return 'Blueprint';
+  if(ind.includes('manufactur')||ind.includes('saas')||ind.includes('tech')||ind.includes('software'))return 'Architecture';
+  return 'Nucleus';
+}
+
+// ── Filters & Render ──────────────────────────────────────────────
+function applyFilters(){
+  const prod=document.getElementById('f-product')?.value||'';
+  const owner=document.getElementById('f-owner')?.value||'';
+  const search=(document.getElementById('f-search')?.value||'').toLowerCase();
+  filtered=leads.filter(l=>{
+    if(prod&&l.product!==prod)return false;
+    if(owner&&l.owner!==owner)return false;
+    if(search&&!l.company.toLowerCase().includes(search)&&!l.email.toLowerCase().includes(search)&&!(l.first_name||'').toLowerCase().includes(search))return false;
+    if(sideFilter==='all')return true;
+    if(['warm','interested','active','delivered','bounced','unsubscribed'].includes(sideFilter))return l.status===sideFilter;
+    if(['Architecture','Blueprint','Nucleus'].includes(sideFilter))return l.product===sideFilter;
+    if(sideFilter==='frank')return l.owner==='frank';
+    if(sideFilter==='sarah')return l.owner==='sarah';
+    return true;
+  });
+  renderPipelineTable();
+  updateStats();
+}
+
+function renderKanban(){
+  const board=document.getElementById('kanban-board');
+  if(!board)return;
+  board.innerHTML=KANBAN_COLS.map(col=>{
+    const colLeads=leads.filter(l=>col.statuses.includes(l.status));
+    return `<div class="kanban-col">
+      <div class="kanban-header" style="color:${col.color}">${col.label}<span style="font-size:0.65rem;background:var(--bg3);padding:1px 6px;border-radius:8px;color:var(--muted)">${colLeads.length}</span></div>
+      <div class="kanban-body">${colLeads.length?colLeads.slice(0,8).map(l=>`
+        <div class="kanban-card" onclick="openLeadModal('${l.id}')">
+          <div class="kanban-card-company">${l.company}</div>
+          <div class="kanban-card-meta">${l.first_name||''} · <span class="pill ${statusPill(l.status)}" style="font-size:0.6rem">${STATUSES[l.status]?.label||l.status}</span></div>
+          <div class="kanban-card-meta" style="margin-top:2px">${l.product||'—'} · ${l.state||'—'}</div>
+        </div>`).join(''):'<div style="padding:0.5rem;font-size:0.72rem;color:var(--muted);text-align:center">Empty</div>'}
+      </div>
+    </div>`;
+  }).join('');
+}
+
+function statusPill(s){return STATUSES[s]?.cls||'p-sent';}
+
+function renderPipelineTable(){
+  const tbody=document.getElementById('pipeline-tbody');
+  const cnt=document.getElementById('pipeline-count');
+  if(!tbody)return;
+  if(cnt)cnt.textContent=filtered.length+' leads';
+  if(!filtered.length){tbody.innerHTML='<tr><td colspan="9" style="text-align:center;padding:2rem;color:var(--muted)">No leads yet — sync from LIPC or add manually</td></tr>';return;}
+  tbody.innerHTML=filtered.map(l=>`<tr onclick="openLeadModal('${l.id}')" style="cursor:pointer">
+    <td style="font-weight:600;max-width:140px">${l.company}</td>
+    <td>${l.first_name||'—'}</td>
+    <td><span style="font-size:0.72rem;color:var(--gold)">${l.product||'—'}</span></td>
+    <td><span class="pill ${statusPill(l.status)}">${STATUSES[l.status]?.label||l.status}</span></td>
+    <td style="color:${l.owner==='frank'?'var(--amber)':'var(--purple)'}">${l.owner||'—'}</td>
+    <td style="font-size:0.75rem;max-width:120px">${l.industry||'—'}</td>
+    <td style="font-size:0.72rem;color:var(--muted)">${l.last_action||'—'}</td>
+    <td style="font-size:0.72rem;color:var(--muted)">${l.date_entered||'—'}</td>
+    <td onclick="event.stopPropagation()" style="display:flex;gap:3px">
+      <button class="btn btn-ghost btn-sm" onclick="quickStatus('${l.id}')">Status</button>
+      <button class="btn btn-primary btn-sm" onclick="openCompose('${l.id}')">Email</button>
+    </td>
+  </tr>`).join('');
+}
+
+// ── Lead Modal ────────────────────────────────────────────────────
+function openLeadModal(id){
+  const l=leads.find(x=>x.id===id);if(!l)return;
+  selectedLead=l;
+  document.getElementById('modal-lead-title').textContent=l.company+' — '+l.first_name;
+  const nextStatuses=STATUSES[l.status]?.next||[];
+  document.getElementById('modal-lead-body').innerHTML=`
+    <div class="two-col" style="gap:0.8rem;margin-bottom:1rem">
+      <div>
+        <div style="font-size:0.68rem;color:var(--muted);text-transform:uppercase;letter-spacing:0.1em;margin-bottom:0.4rem">Contact</div>
+        <div style="font-size:0.85rem;font-weight:600">${l.company}</div>
+        <div style="font-size:0.8rem;color:var(--muted)">${l.first_name||''} · ${l.title||'No title'}</div>
+        <div style="font-size:0.8rem;color:var(--blue2)">${l.email}</div>
+        <div style="font-size:0.8rem;color:var(--muted)">${l.phone||'No phone'}</div>
+        <div style="font-size:0.78rem;color:var(--muted);margin-top:0.3rem">${l.industry||''} · ${l.state||''} ${l.postal_code||''}</div>
+      </div>
+      <div>
+        <div style="font-size:0.68rem;color:var(--muted);text-transform:uppercase;letter-spacing:0.1em;margin-bottom:0.4rem">Pipeline</div>
+        <div style="margin-bottom:0.4rem"><span class="pill ${statusPill(l.status)}">${STATUSES[l.status]?.label||l.status}</span></div>
+        <div style="font-size:0.78rem;color:var(--muted)">Product: <span style="color:var(--gold)">${l.product||'—'}</span></div>
+        <div style="font-size:0.78rem;color:var(--muted)">Owner: <span style="color:${l.owner==='frank'?'var(--amber)':'var(--purple)'}">${l.owner||'—'}</span></div>
+        <div style="font-size:0.78rem;color:var(--muted)">Date in: ${l.date_entered||'—'}</div>
+        <div style="font-size:0.78rem;color:var(--muted)">Email sequence: #${l.email_sequence||0}</div>
+        <div style="font-size:0.78rem;color:var(--muted)">LIPC Score: ${l.lipc_score||'—'}</div>
+      </div>
+    </div>
+    ${nextStatuses.length?`<div style="margin-bottom:0.8rem">
+      <div style="font-size:0.68rem;color:var(--muted);text-transform:uppercase;letter-spacing:0.1em;margin-bottom:0.4rem">Move to Status</div>
+      <div style="display:flex;gap:0.4rem;flex-wrap:wrap">
+        ${nextStatuses.map(s=>`<button class="btn btn-ghost btn-sm" onclick="setLeadStatus('${l.id}','${s}');closeModal('modal-lead')">${STATUSES[s]?.label||s}</button>`).join('')}
+      </div>
+    </div>`:''}
+    <div style="margin-bottom:0.8rem">
+      <div style="font-size:0.68rem;color:var(--muted);text-transform:uppercase;letter-spacing:0.1em;margin-bottom:0.4rem">Product Assignment</div>
+      <div style="display:flex;gap:0.4rem">
+        ${['Architecture','Blueprint','Nucleus'].map(p=>`<button class="btn btn-sm ${l.product===p?'btn-gold':'btn-ghost'}" onclick="setLeadProduct('${l.id}','${p}')">${p}</button>`).join('')}
+      </div>
+    </div>
+    <div style="margin-bottom:0.8rem">
+      <div style="font-size:0.68rem;color:var(--muted);text-transform:uppercase;letter-spacing:0.1em;margin-bottom:0.3rem">Notes</div>
+      <textarea id="modal-notes" style="width:100%;min-height:80px;font-size:0.8rem" onchange="saveLeadNotes('${l.id}')">${l.notes||''}</textarea>
+    </div>
+    <div style="display:flex;gap:0.5rem;justify-content:flex-end">
+      <button class="btn btn-primary btn-sm" onclick="openCompose('${l.id}');closeModal('modal-lead')">Compose Email</button>
+      <button class="btn btn-ghost btn-sm" onclick="openAIForLead('${l.id}');closeModal('modal-lead')">Ask AI</button>
+      ${l.status==='unsubscribed'?'':`<button class="btn btn-red btn-sm" onclick="setLeadStatus('${l.id}','unsubscribed');closeModal('modal-lead')">Unsubscribe</button>`}
+    </div>`;
+  document.getElementById('modal-lead').style.display='flex';
+}
+
+function setLeadStatus(id,status){
+  const l=leads.find(x=>x.id===id);if(!l)return;
+  l.status=status;l.last_action=new Date().toLocaleDateString();
+  if(status==='closed')l.owner='sarah';
+  if(status==='delivered')l.owner='frank';
+  saveLeads();applyFilters();renderKanban();updateStats();
+  // Notify Maii on key transitions
+  const notifyOn=['closed','agreement_signed','active','delivered'];
+  if(notifyOn.includes(status))notifyMaii(l,status);
+}
+
+function setLeadProduct(id,product){
+  const l=leads.find(x=>x.id===id);if(!l)return;
+  l.product=product;saveLeads();
+  document.querySelectorAll('.btn-gold').forEach(b=>b.classList.replace('btn-gold','btn-ghost'));
+  event.target.classList.replace('btn-ghost','btn-gold');
+}
+
+function saveLeadNotes(id){
+  const l=leads.find(x=>x.id===id);if(!l)return;
+  l.notes=document.getElementById('modal-notes')?.value||'';
+  saveLeads();
+}
+
+function quickStatus(id){
+  const l=leads.find(x=>x.id===id);if(!l)return;
+  const next=STATUSES[l.status]?.next||[];
+  if(!next.length)return alert('No next status available for '+l.status);
+  const choice=prompt('Current: '+l.status+'\nMove to:\n'+next.map((s,i)=>`${i+1}. ${STATUSES[s]?.label||s}`).join('\n')+'\n\nEnter number:');
+  if(!choice)return;
+  const idx=parseInt(choice)-1;
+  if(next[idx])setLeadStatus(id,next[idx]);
+}
+
+// ── Add Lead ──────────────────────────────────────────────────────
+function openAddLead(){document.getElementById('modal-add').style.display='flex';}
+function addLead(){
+  const l={
+    id:crypto.randomUUID(),
+    company:document.getElementById('add-company').value.trim(),
+    first_name:document.getElementById('add-fname').value.trim(),
+    email:document.getElementById('add-email').value.trim().toLowerCase(),
+    phone:document.getElementById('add-phone').value.trim(),
+    product:document.getElementById('add-product').value,
+    industry:document.getElementById('add-industry').value.trim(),
+    state:document.getElementById('add-state').value.trim(),
+    status:document.getElementById('add-status').value,
+    owner:document.getElementById('add-owner').value,
+    notes:document.getElementById('add-notes').value.trim(),
+    email_sequence:0,date_entered:new Date().toISOString().split('T')[0],
+    created_at:new Date().toISOString(),
+  };
+  if(!l.company||!l.email){alert('Company and email required');return;}
+  leads.push(l);saveLeads();applyFilters();renderKanban();updateStats();
+  closeModal('modal-add');
+}
+
+// ── Frank & Sarah Tabs ────────────────────────────────────────────
+function renderFrank(){
+  const prodFilter=document.getElementById('frank-filter-product')?.value||'';
+  const statFilter=document.getElementById('frank-filter-status')?.value||'';
+  let frankLeads=leads.filter(l=>l.owner==='frank'&&!['unsubscribed','post_delivery'].includes(l.status));
+  if(prodFilter) frankLeads=frankLeads.filter(l=>l.product===prodFilter);
+  if(statFilter) frankLeads=frankLeads.filter(l=>l.status===statFilter);
+  const el=document.getElementById('frank-leads-list');
+  if(!el)return;
+  document.getElementById('bulk-status').textContent=frankLeads.length+' leads shown — select to bulk send';
+  el.innerHTML=frankLeads.length?`
+    <div style="overflow-y:auto;max-height:60vh">
+    ${frankLeads.map(l=>`
+    <div class="kanban-card" style="margin-bottom:0.4rem;display:flex;align-items:flex-start;gap:0.5rem;padding:0.5rem 0.6rem">
+      <input type="checkbox" class="frank-chk" data-id="${l.id}" style="margin-top:3px;accent-color:var(--gold);flex-shrink:0" onchange="updateBulkCount()"/>
+      <div style="flex:1;cursor:pointer;min-width:0" onclick="selectLeadForCompose('${l.id}','frank')">
+        <div class="kanban-card-company" style="font-size:0.82rem">${l.company}</div>
+        <div class="kanban-card-meta">${l.first_name||'—'} · <span class="pill ${statusPill(l.status)}" style="font-size:0.6rem">${STATUSES[l.status]?.label||l.status}</span> · ${l.product||'—'}</div>
+        <div class="kanban-card-meta" style="color:var(--muted)">Seq #${l.email_sequence||0} · ${l.industry||'—'} · ${l.state||'—'}</div>
+      </div>
+    </div>`).join('')}
+    </div>`:'<div style="color:var(--muted);font-size:0.78rem;padding:0.5rem">No leads match filter</div>';
+}
+
+function updateBulkCount(){
+  const checked=document.querySelectorAll('.frank-chk:checked').length;
+  document.getElementById('bulk-status').textContent=checked?checked+' selected — click Send All to send':'Select leads then click Send All';
+}
+
+function frankSelectAll(){
+  document.querySelectorAll('.frank-chk').forEach(c=>c.checked=true);
+  updateBulkCount();
+}
+
+function frankClearAll(){
+  document.querySelectorAll('.frank-chk').forEach(c=>c.checked=false);
+  updateBulkCount();
+}
+
+async function bulkSendAll(){
+  const checked=[...document.querySelectorAll('.frank-chk:checked')].map(c=>c.dataset.id);
+  if(!checked.length){alert('Select at least one lead first');return;}
+  if(!confirm(`Send emails to ${checked.length} leads now?\n\nEmails will send from rfrank@eigenvalueconsulting.com using the template for each lead's product and sequence number.`))return;
+
+  const statusEl=document.getElementById('bulk-status');
+  let sent=0,failed=0;
+
+  for(const id of checked){
+    const l=leads.find(x=>x.id===id);
+    if(!l)continue;
+    const template=getEmailTemplate(l,true);
+    statusEl.textContent=`Sending ${sent+failed+1} of ${checked.length} — ${l.company}...`;
+    try{
+      const clientId=localStorage.getItem('crm_client_id')||'';
+      const tenantId=localStorage.getItem('crm_tenant_id')||'';
+      const clientSecret=localStorage.getItem('crm_client_secret')||'';
+      if(!clientId||!tenantId||!clientSecret){
+        alert('M365 keys not set in Settings. Cannot send.');
+        return;
+      }
+      const tokenRes=await fetch(`https://login.microsoftonline.com/${tenantId}/oauth2/v2.0/token`,{
+        method:'POST',
+        headers:{'Content-Type':'application/x-www-form-urlencoded'},
+        body:new URLSearchParams({grant_type:'client_credentials',client_id:clientId,client_secret:clientSecret,scope:'https://graph.microsoft.com/.default'})
+      });
+      const tokenData=await tokenRes.json();
+      if(!tokenData.access_token)throw new Error('Token failed');
+      const mailRes=await fetch(`https://graph.microsoft.com/v1.0/users/${FRANK_EMAIL}/sendMail`,{
+        method:'POST',
+        headers:{'Authorization':'Bearer '+tokenData.access_token,'Content-Type':'application/json'},
+        body:JSON.stringify({
+          message:{
+            subject:template.subject,
+            body:{contentType:'Text',content:template.body},
+            toRecipients:[{emailAddress:{address:l.email,name:l.first_name||l.company}}],
+          },
+          saveToSentItems:true
+        })
+      });
+      if(mailRes.ok||mailRes.status===202){
+        l.email_sequence=(l.email_sequence||0)+1;
+        l.last_action='Email sent '+new Date().toLocaleDateString();
+        sent++;
+      } else {
+        failed++;
+      }
+    } catch(e){
+      failed++;
+      console.error('Send failed for '+l.company,e);
+    }
+    // Small delay between sends to avoid throttling
+    await new Promise(r=>setTimeout(r,800));
+  }
+
+  saveLeads();
+  renderFrank();
+  updateStats();
+  statusEl.textContent=`Done — ${sent} sent, ${failed} failed`;
+  if(sent>0) addLog('out',`Bulk send: ${sent} emails sent by Frank`);
+}
+
+function renderSarah(){
+  const sarahLeads=leads.filter(l=>l.owner==='sarah');
+  const el=document.getElementById('sarah-leads-list');
+  if(!el)return;
+  el.innerHTML=sarahLeads.length?sarahLeads.map(l=>`
+    <div class="kanban-card" onclick="selectLeadForCompose('${l.id}','sarah')" style="margin-bottom:0.5rem">
+      <div class="kanban-card-company">${l.company}</div>
+      <div class="kanban-card-meta">${l.first_name||''} · <span class="pill ${statusPill(l.status)}">${STATUSES[l.status]?.label||l.status}</span></div>
+      <div class="kanban-card-meta">${l.product||'—'} · ${l.status}</div>
+    </div>`).join(''):'<div style="color:var(--muted);font-size:0.78rem;padding:0.5rem">No active leads for Sarah</div>';
+}
+
+function selectLeadForCompose(id,agent){
+  const l=leads.find(x=>x.id===id);if(!l)return;
+  selectedLead=l;
+  openCompose(id,agent);
+}
+
+function openCompose(id,agent){
+  const l=leads.find(x=>x.id===id);if(!l)return;
+  const isFrank=agent==='frank'||l.owner==='frank';
+  const panelId=isFrank?'frank-composer-panel':'sarah-composer-panel';
+  const fromEmail=isFrank?FRANK_EMAIL:SARAH_EMAIL;
+  const template=getEmailTemplate(l,isFrank);
+  const panel=document.getElementById(panelId);
+  if(!panel)return;
+  if(isFrank)showTab('frank'); else showTab('sarah');
+  const sendFn=isFrank?'true':'false';
+  panel.innerHTML=`
+    <h3 style="margin-bottom:0.6rem">Email to ${l.company} — ${l.first_name||''}</h3>
+    <div class="info" style="font-size:0.72rem;margin-bottom:0.6rem">From: ${fromEmail} &nbsp;·&nbsp; To: ${l.email} &nbsp;·&nbsp; Sequence #${(l.email_sequence||0)+1} &nbsp;·&nbsp; Product: ${l.product||'—'}</div>
+    <div class="email-composer">
+      <div class="email-composer-header">
+        <span style="color:var(--muted);flex-shrink:0">Subject:</span>
+        <input type="text" id="compose-subject" value="${template.subject.replace(/`/g,"'")}" style="flex:1;background:transparent;border:none;color:var(--text);font-size:0.82rem;outline:none;margin-left:0.4rem"/>
+      </div>
+      <textarea id="compose-body" style="min-height:220px">${template.body.replace(/`/g,"'")}</textarea>
+      <div class="email-composer-footer">
+        <button class="btn btn-ghost btn-sm" onclick="aiImproveEmail()">AI Improve</button>
+        <div style="flex:1"></div>
+        <button class="btn btn-primary" onclick="sendEmail('${id}',${sendFn})">Send via M365</button>
+      </div>
+    </div>
+    <div id="send-status" style="margin-top:0.5rem;font-size:0.78rem"></div>
+    <div style="margin-top:0.8rem;display:flex;gap:0.4rem;flex-wrap:wrap">
+      <button class="btn btn-ghost btn-sm" onclick="setLeadStatus('${id}','bounced');renderFrank();renderSarah()">Bounced</button>
+      <button class="btn btn-ghost btn-sm" onclick="setLeadStatus('${id}','warm');renderFrank();renderSarah()">Warm</button>
+      <button class="btn btn-ghost btn-sm" onclick="setLeadStatus('${id}','interested');renderFrank();renderSarah()">Interested</button>
+      <button class="btn btn-ghost btn-sm" onclick="setLeadStatus('${id}','no_response');renderFrank();renderSarah()">No Response</button>
+      <button class="btn btn-red btn-sm" onclick="setLeadStatus('${id}','unsubscribed');renderFrank();renderSarah()">Unsubscribe</button>
+    </div>`;
+}
+
+function getEmailTemplate(l,isFrank){
+  const seq=l.email_sequence||0;
+  const prod=l.product||'Architecture';
+  const fname=l.first_name||'there';
+  const ind=l.industry||'your industry';
+  if(!isFrank){
+    if(l.status==='closed')return{
+      subject:`Your application — Eigenvalue Consulting`,
+      body:`Hi ${fname},\n\nI'm Sarah Chen, working with Maii at Eigenvalue Consulting. Richard mentioned you're ready to move forward — wonderful to connect.\n\nPlease find our client application attached to this email as a PDF. It takes about 5 minutes to complete. Simply fill it out and send it back to this address.\n\nIf you have any trouble opening the PDF, just let me know and I'll send a Word version right away.\n\nOnce we receive your completed application, I will send payment instructions and confirm your start date within 24 hours.\n\nLooking forward to working with you.\n\n— Sarah Chen | Eigenvalue Consulting\nsarah@maxeconsulting.com`
+    };
+    if(l.status==='delivered')return{
+      subject:`Your next step — ${l.company}`,
+      body:`Hi ${fname},\n\nNow that your diagnostic is complete, I wanted to follow up on the recommendation in your report.\n\nBased on what we found, the natural next step is ${prod === 'Architecture' ? 'our Architecture solution — a rebuilt financial model and Financial Monitor dashboard' : prod === 'Blueprint' ? 'our Blueprint solution — a redesigned operations workflow and PO Management dashboard' : 'our Nucleus solution — a structured onboarding platform and retention survey system'}.\n\nA few questions before we scope this properly:\n\n1. When are you looking to implement this?\n2. Would you like to involve anyone else from your team in the conversation?\n3. On a scale of 1–10, how urgent is solving this problem right now?\n\nHappy to jump on a quick call or continue by email — whatever works best for you.\n\n— Sarah Chen | Eigenvalue Consulting\nsarah@maxeconsulting.com`
+    };
+    return{subject:`Following up — ${l.company}`,body:`Hi ${fname},\n\nJust following up on the agreement I sent over. Please let me know if you have any questions or if there's anything I can clarify.\n\n— Sarah Chen | Eigenvalue Consulting`};
+  }
+  // Frank templates by sequence
+  if(seq===0){
+    const subjects={'Architecture':'3 financial patterns I found in '+ind+' companies your size','Blueprint':'3 operational issues I see in '+ind+' companies your size','Nucleus':'Quick question about '+l.company+'\'s team structure'};
+    const bodies={
+      Architecture:`Hi ${fname},\n\nI run a business diagnostics firm that audits the financial structure of ${ind} companies in the $3M–$20M range. In recent engagements across Texas and Ohio, the same three same patterns consistently: pricing that doesn\'t reflect true job cost (often 8 to 12 percent in lost margin), vendor payment terms that haven\'t been renegotiated in years, and cash flow timing gaps that create shortfalls out of nowhere.\\n\\nI offer a $750 Eigenvalue Diagnostic — a written findings report that confirms whether these patterns exist in your business and estimates what they're costing you annually. No call required to start.\n\nWorth a look?\n\n— Richard J. Frank | Eigenvalue Consulting\nrfrank@eigenvalueconsulting.com  ·  eigenvalueconsulting.com`,
+      Blueprint:`Hi ${fname},\n\nI work with ${ind} operators in the $2M–$15M range on one specific problem: broken back-office processes that quietly drain margin without ever showing up clearly on a P&L.\n\nThe pattern is almost always the same: purchase orders approved verbally with no paper trail, invoices going out weeks after work is done, and no visibility into what is happening day to day.\\n\\nMy $750 Eigenvalue Diagnostic confirms whether these exist in your operation and tells you exactly what fixing them is worth. Delivered as a written findings report in 5–7 days.\n\nInterested?\n\n— Richard J. Frank | Eigenvalue Consulting\nrfrank@eigenvalueconsulting.com`,
+      Nucleus:`Hi ${fname},\n\nI specialize in workforce retention and onboarding infrastructure for ${ind} companies. The pattern I see in most operators your size is that institutional knowledge lives in a few people's heads, new hires take two to three months to be truly useful, and turnover is costing $8,000 to $15,000 per person with no one tracking it.\n\nMy $750 Eigenvalue Diagnostic reviews your current people structure and delivers a written findings report in 5–7 days.\n\nNo call required. Worth a look?\n\n— Richard J. Frank | Eigenvalue Consulting\nrfrank@eigenvalueconsulting.com`,
+    };
+    return{subject:subjects[prod]||subjects.Architecture,body:bodies[prod]||bodies.Architecture};
+  }
+  if(seq===1)return{
+    subject:`Wanted to make sure this didn't get buried`,
+    body:`Hi ${fname},\n\nJust wanted to make sure my last note didn't get lost — happy to answer any questions about the diagnostic before you decide.\n\nThe $750 stays regardless of timing.\n\n— Richard J. Frank | Eigenvalue Consulting\nrfrank@eigenvalueconsulting.com`
+  };
+  return{
+    subject:`Last note from me — ${l.company}`,
+    body:`Hi ${fname},\n\nLast note from me — if timing isn't right, happy to reconnect whenever it makes sense. The diagnostic stays at $750 regardless of when you move forward.\n\n— Richard J. Frank | Eigenvalue Consulting\nrfrank@eigenvalueconsulting.com`
+  };
+}
+
+// ── M365 Email Send ───────────────────────────────────────────────
+async function sendEmail(id,isFrank){
+  const l=leads.find(x=>x.id===id);if(!l)return;
+  const subject=document.getElementById('compose-subject')?.value||'';
+  const body=document.getElementById('compose-body')?.value||'';
+  const fromEmail=isFrank?FRANK_EMAIL:SARAH_EMAIL;
+  const statusEl=document.getElementById('send-status');
+  if(statusEl){statusEl.textContent='Sending...';statusEl.style.color='var(--amber)';}
+
+  // Microsoft Graph API — sends as the user via client credentials
+  // Flow: get access token → POST /users/{from}/sendMail
+  try {
+    // Step 1: Get token
+    const tokenRes=await fetch(`https://login.microsoftonline.com/${M365_TENANT_ID}/oauth2/v2.0/token`,{
+      method:'POST',
+      headers:{'Content-Type':'application/x-www-form-urlencoded'},
+      body:new URLSearchParams({
+        grant_type:'client_credentials',
+        client_id:document.getElementById('s-client-id')?.value||M365_CLIENT_ID,
+        client_secret:document.getElementById('s-client-secret')?.value||'',
+        scope:'https://graph.microsoft.com/.default'
+      })
+    });
+    const tokenData=await tokenRes.json();
+    if(!tokenData.access_token)throw new Error('Token failed: '+(tokenData.error_description||tokenData.error));
+
+    // Step 2: Send mail
+    const mailRes=await fetch(`https://graph.microsoft.com/v1.0/users/${fromEmail}/sendMail`,{
+      method:'POST',
+      headers:{'Authorization':'Bearer '+tokenData.access_token,'Content-Type':'application/json'},
+      body:JSON.stringify({
+        message:{
+          subject,
+          body:{contentType:'Text',content:body},
+          toRecipients:[{emailAddress:{address:l.email,name:l.first_name||l.company}}],
+          from:{emailAddress:{address:fromEmail}},
+        },
+        saveToSentItems:true
+      })
+    });
+
+    if(mailRes.ok||mailRes.status===202){
+      l.email_sequence=(l.email_sequence||0)+1;
+      l.last_action='Email sent '+new Date().toLocaleDateString();
+      l.last_email_date=new Date().toISOString();
+      saveLeads();updateStats();
+      if(statusEl){statusEl.textContent='✓ Sent from '+fromEmail;statusEl.style.color='var(--green)';}
+      notifyMaii(l,'email_sent');
+    } else {
+      const err=await mailRes.json();
+      throw new Error(err.error?.message||'Send failed '+mailRes.status);
+    }
+  } catch(e){
+    if(statusEl){statusEl.textContent='Error: '+e.message;statusEl.style.color='var(--red)';}
+    console.error('Email send error:',e);
+  }
+}
+
+async function notifyMaii(lead,event){
+  const resendKey=document.getElementById('s-resend-key')?.value||'';
+  if(!resendKey||!resendKey.startsWith('re_'))return;
+  const messages={
+    closed:`Frank closed ${lead.company} (${lead.email}). Sarah needs to send the agreement.`,
+    agreement_signed:`${lead.company} signed the agreement. Deposit pending. Maii to begin work.`,
+    active:`${lead.company} project is now active. Maii working.`,
+    delivered:`${lead.company} project delivered. Frank sending post-delivery email.`,
+    email_sent:`Frank/Sarah sent email #${lead.email_sequence} to ${lead.company}.`,
+  };
+  const msg=messages[event];
+  if(!msg)return;
+  await fetch('https://api.resend.com/emails',{
+    method:'POST',
+    headers:{'Authorization':'Bearer '+resendKey,'Content-Type':'application/json'},
+    body:JSON.stringify({
+      from:'crm@eigenvalueconsulting.com',
+      to:NOTIFY_EMAIL,
+      subject:`CRM Update: ${lead.company} — ${event}`,
+      html:`<p>${msg}</p><p>Lead: ${lead.company} | ${lead.email} | ${lead.product} | ${lead.status}</p>`
+    })
+  });
+}
+
+// ── AI Assist ─────────────────────────────────────────────────────
+async function sendAI(){
+  const input=document.getElementById('ai-input');
+  const msg=input?.value?.trim();
+  if(!msg)return;
+  input.value='';
+  const agent=document.getElementById('ai-agent')?.value||'frank';
+  const leadId=document.getElementById('ai-lead-ctx')?.value||'';
+  const lead=leads.find(l=>l.id===leadId);
+  addAIMessage(msg,'user');
+
+  const systemPrompt=buildSystemPrompt(agent,lead);
+  aiHistory.push({role:'user',content:msg});
+
+  addAIMessage('Thinking...','ai');
+
+  // AI calls route through Vercel proxy at /api/ai to avoid CORS
+  const proxyUrl = '/api/ai';
+  try {
+    const res=await fetch(proxyUrl,{
+      method:'POST',
+      headers:{'Content-Type':'application/json'},
+      body:JSON.stringify({system:systemPrompt, messages:aiHistory})
+    });
+    if(!res.ok){
+      const txt=await res.text();
+      throw new Error(res.status===404?'AI proxy not set up yet — see Settings tab for instructions':txt);
+    }
+    const data=await res.json();
+    const reply=data.content?.[0]?.text||'No response';
+    aiHistory.push({role:'assistant',content:reply});
+    const msgs=document.getElementById('ai-messages');
+    if(msgs&&msgs.lastChild)msgs.removeChild(msgs.lastChild);
+    addAIMessage(reply,'ai');
+  } catch(e){
+    const msgs=document.getElementById('ai-messages');
+    if(msgs&&msgs.lastChild)msgs.removeChild(msgs.lastChild);
+    if(e.message.includes('proxy not set up')){
+      addAIMessage('AI Assist needs a Vercel API proxy to work. Go to Settings tab for setup instructions.','system');
+    } else {
+      addAIMessage('Error: '+e.message,'ai');
+    }
+  }
+}
+
+function buildSystemPrompt(agent,lead){
+  const agentInfo=agent==='frank'?
+    `You are assisting Richard J. Frank, the sales representative for Eigenvalue Consulting. Frank handles cold outreach, follows up, qualifies leads, and closes deals (gets them to submit the application). Frank does NOT handle contracts, agreements, or post-sale management. Frank's email is rfrank@eigenvalueconsulting.com.`:
+    `You are assisting Sarah Chen, the legal and account manager for Eigenvalue Consulting. Sarah handles consulting agreements, solution scoping conversations, and client account management after Frank closes. Sarah's email is sarah@maxeconsulting.com.`;
+  const products=`
+PRODUCTS:
+- Architecture ($2,000–$4,000): Financial Advisory — rebuilt financial model, job costing, cash flow structure, Financial Monitor dashboard. Target: Manufacturing, Logistics, SaaS.
+- Blueprint ($1,500–$3,500): Operational Excellence — PO approval workflow, AR trigger system, operations dashboard. Target: Construction, Wholesale, Freight.
+- Nucleus ($1,500–$3,000): People & Onboarding — onboarding playbook, retention survey platform, comp structure. Target: Construction, Warehousing, Logistics, HVAC.
+- Diagnostic entry: $750 (written report) or $1,250 (report + live Zoom).`;
+  const leadContext=lead?`
+CURRENT LEAD:
+- Company: ${lead.company}
+- Contact: ${lead.first_name} | ${lead.email}
+- Industry: ${lead.industry} | State: ${lead.state}
+- Product: ${lead.product}
+- Status: ${lead.status} (${STATUSES[lead.status]?.label||lead.status})
+- Email sequence: #${lead.email_sequence||0}
+- Notes: ${lead.notes||'None'}`:'\nNo lead selected — giving general guidance.';
+  return `You are an AI assistant for Eigenvalue Consulting.\n\n${agentInfo}\n${products}\n${leadContext}\n\nBe concise, practical, and professional. Draft emails when asked — keep them short, warm, and direct. Never be pushy. Never quote prices unprompted. Always use the lead's first name.`;
+}
+
+function addAIMessage(text,type){
+  const msgs=document.getElementById('ai-messages');
+  if(!msgs)return;
+  const div=document.createElement('div');
+  div.className='ai-msg '+type;
+  div.textContent=text;
+  msgs.appendChild(div);
+  msgs.scrollTop=msgs.scrollHeight;
+}
+
+function quickPrompt(text){
+  document.getElementById('ai-input').value=text;
+  sendAI();
+}
+
+function openAIForLead(id){
+  showTab('ai');
+  const sel=document.getElementById('ai-lead-ctx');
+  if(sel)sel.value=id;
+}
+
+async function aiImproveEmail(){
+  const body=document.getElementById('compose-body')?.value||'';
+  if(!body)return;
+  addAIMessage('Improving email...','system');
+  showTab(selectedLead?.owner==='frank'?'frank':'sarah');
+  try {
+    const res=await fetch('/api/ai',{
+      method:'POST',
+      headers:{'Content-Type':'application/json'},
+      body:JSON.stringify({messages:[{role:'user',content:'Improve this sales email. Make it more concise, warmer, and compelling. No bullet points or dashes. Return only the improved email body, no explanation:\n\n'+body}]})
+    });
+    if(!res.ok) throw new Error('AI proxy not available');
+    const data=await res.json();
+    const improved=data.content?.[0]?.text||body;
+    const ta=document.getElementById('compose-body');
+    if(ta)ta.value=improved;
+  } catch(e){alert('AI Improve not available yet — edit manually.');}
+}
+
+async function editDoc(){
+  const text=document.getElementById('doc-ai-input')?.value||'';
+  const instruction=document.getElementById('doc-ai-instruction')?.value||'';
+  if(!text||!instruction)return alert('Add text and instruction first');
+  const result=document.getElementById('doc-ai-result');
+  if(result){result.textContent='Editing...';result.style.display='block';}
+  try {
+    const res=await fetch('/api/ai',{
+      method:'POST',
+      headers:{'Content-Type':'application/json'},
+      body:JSON.stringify({messages:[{role:'user',content:instruction+'\n\nDocument section:\n'+text+'\n\nReturn only the edited text, no explanation.'}]})
+    });
+    if(!res.ok) throw new Error('AI proxy not available');
+    const data=await res.json();
+    if(result)result.textContent=data.content?.[0]?.text||text;
+  } catch(e){if(result)result.textContent='AI not available yet — edit manually.';}
+}
+
+function copyDocResult(){
+  const text=document.getElementById('doc-ai-result')?.textContent||'';
+  navigator.clipboard.writeText(text).then(()=>alert('Copied'));
+}
+
+// ── Documents ─────────────────────────────────────────────────────
+const DOC_TEMPLATES={
+  application:`EIGENVALUE CONSULTING — CLIENT APPLICATION
+eigenvalueconsulting.com
+
+COMPANY INFORMATION
+Company Name: _________________________________
+Industry: _________________________________
+State: _____________ Years in Business: ___________
+Number of Employees: _______ Annual Revenue (approx.): $________
+
+YOUR INFORMATION
+First Name: ________________ Last Name: ________________
+Title / Role: _________________________________
+Email Address: _________________________________
+Phone Number: _________________________________
+Website: _________________________________
+
+SERVICE INTEREST (check all that apply)
+[ ] Financial Advisory & Modeling (Architecture)
+[ ] Operational Excellence & PO Systems (Blueprint)
+[ ] People & Onboarding Infrastructure (Nucleus)
+[ ] Bespoke / Custom Solutions
+
+YOUR BIGGEST CHALLENGE
+_________________________________________________________________
+_________________________________________________________________
+_________________________________________________________________
+
+PACKAGE SELECTION
+[ ] Advisory Session — $750 total · $375 deposit to begin
+    Written findings report, 5–7 business days
+    
+[ ] Advisory Session + Live Zoom — $1,250 total · $312.50 deposit
+    Report + 30-minute Zoom walkthrough
+
+HOW DID YOU HEAR ABOUT US?
+_________________________________
+
+By submitting this form, you agree to the terms of the Eigenvalue Consulting
+Diagnostic Engagement Letter which will be sent separately.
+
+Eigenvalue Consulting · eigenvalueconsulting.com · Confidential`,
+
+  engagement:`EIGENVALUE CONSULTING
+DIAGNOSTIC ENGAGEMENT LETTER
+
+Date: [DATE]
+Client: [CLIENT NAME]
+Company: [COMPANY NAME]
+Email: [CLIENT EMAIL]
+
+This letter confirms the scope and terms of the Eigenvalue Diagnostic engagement.
+
+SCOPE
+Eigenvalue Consulting ("Consultant") will conduct a business diagnostic for [COMPANY NAME] ("Client")
+and deliver a written Findings Report within 5–7 business days of receiving Client's financial information.
+
+The Findings Report will include:
+• Identification of up to three operational or financial issues
+• Estimated annual dollar cost of each identified issue
+• Recommendation paragraph outlining paths to resolution
+
+PACKAGE: [ ] $750 Written Report  [ ] $1,250 Report + Live Zoom
+
+PAYMENT
+A non-refundable deposit of [DEPOSIT AMOUNT] is due before work begins.
+Balance due upon delivery of the Findings Report.
+
+INFORMATION REQUIRED FROM CLIENT
+Client agrees to provide, within 3 business days of payment:
+• 3 months of financial statements (income statement and cash flow summary)
+• Responses to intake questionnaire (sent separately)
+
+CONFIDENTIALITY
+Both parties agree to hold all shared information in strict confidence.
+Consultant will not share Client's financial data with any third party.
+
+DELIVERABLE
+One written Findings Report delivered via email as a PDF document.
+The diagnostic does not constitute financial advice or a full audit.
+
+SIGNATURES
+
+_________________________    _________________________
+Eigenvalue Consulting         Client Signature
+Mairet Murias                 [CLIENT NAME]
+Date: ________________        Date: ________________
+
+Eigenvalue Consulting · eigenvalueconsulting.com`,
+
+  agreement:`⚠️  AGREEMENT LOCKED — UNDER ATTORNEY REVIEW
+
+This template is not approved for client use yet.
+Expected approval: 1–2 weeks from March 16, 2026.
+
+Once your attorney approves:
+1. Upload the final signed-off .docx to the Upload section
+2. Maii unlocks Sarah to send it directly
+
+For now: Sarah sends the APPLICATION only.
+Maii reviews and sends the agreement manually.
+
+───────────────────────────────
+DRAFT BELOW FOR REFERENCE ONLY
+───────────────────────────────
+
+EIGENVALUE CONSULTING
+MASTER CONSULTING AGREEMENT — DRAFT
+
+Date: [DATE]
+Client Company: [CLIENT COMPANY NAME]
+Client Contact: [CLIENT NAME], [CLIENT TITLE]
+Client Email: [CLIENT EMAIL]
+
+CONSULTANT: Eigenvalue Consulting LLC
+Contact: Mairet Murias | max@maxeconsulting.com
+
+1. SCOPE OF SERVICES
+Consultant will provide [SELECTED PACKAGE] services as described in the attached
+Statement of Work. Specific deliverables and timeline to be confirmed upon engagement start.
+
+Selected Package: [ ] Architecture ($[FEE])  [ ] Blueprint ($[FEE])  [ ] Nucleus ($[FEE])
+
+2. FEES AND PAYMENT
+Total Fee: $[TOTAL FEE]
+Deposit (50% due before start): $[DEPOSIT]
+Balance (due on delivery): $[BALANCE]
+
+3. TERM AND TERMINATION
+30 days written notice required. Deposits are non-refundable.
+Client pays for all work completed through termination date.
+
+4. CONFIDENTIALITY
+Both parties hold all shared information in strict confidence for 3 years post-engagement.
+
+5. INTELLECTUAL PROPERTY
+Upon full payment, all Work Product becomes sole property of Client.
+Consultant retains rights to general methodologies and frameworks.
+
+6. INDEPENDENT CONTRACTOR
+Consultant is an independent contractor, not an employee.
+
+7. LIMITATION OF LIABILITY
+Consultant liability not to exceed fees paid in preceding 3 months.
+Recommendations are advisory. Client bears responsibility for business decisions.
+
+8. GOVERNING LAW
+State of Florida. Disputes resolved via AAA arbitration.
+
+SIGNATURES
+_________________________    _________________________
+Eigenvalue Consulting         Client Authorized Signatory
+Mairet Murias                 [CLIENT NAME]
+Date: ________________        Date: ________________
+
+DRAFT — NOT REVIEWED BY COUNSEL
+Eigenvalue Consulting · eigenvalueconsulting.com`,
+
+  nda:`EIGENVALUE CONSULTING
+NON-DISCLOSURE AGREEMENT
+
+Date: [DATE]
+Between: Eigenvalue Consulting LLC ("Consultant") and [CLIENT COMPANY] ("Client")
+
+1. CONFIDENTIAL INFORMATION
+Each party agrees to hold in strict confidence all non-public business, financial,
+and operational information shared in connection with evaluation of a potential
+consulting engagement ("Confidential Information").
+
+2. OBLIGATIONS
+Neither party shall disclose Confidential Information to any third party without
+prior written consent. Each party will use Confidential Information solely for
+evaluating or conducting the potential engagement.
+
+3. EXCLUSIONS
+These obligations do not apply to information that:
+(a) is or becomes publicly known through no breach of this Agreement
+(b) was known to receiving party before disclosure
+(c) is required to be disclosed by law or court order
+
+4. TERM
+This Agreement is effective for 2 years from the date of signing.
+
+5. RETURN OF INFORMATION
+Upon request, each party will return or destroy the other's Confidential Information.
+
+SIGNATURES
+_________________________    _________________________
+Eigenvalue Consulting         [CLIENT COMPANY]
+Mairet Murias                 [CLIENT NAME]
+Date: ________________        Date: ________________
+
+Eigenvalue Consulting · eigenvalueconsulting.com`
+};
+
+let currentDoc='application';
+function loadDoc(name){
+  currentDoc=name;
+  document.querySelectorAll('[id^=doc-btn-]').forEach(b=>b.classList.remove('active'));
+  document.getElementById('doc-btn-'+name)?.classList.add('active');
+  const names={application:'Application Form',engagement:'Engagement Letter',agreement:'Consulting Agreement'};
+  document.getElementById('doc-current-name').textContent=names[name]||name;
+  const saved=docEdits[name];
+  document.getElementById('doc-textarea').value=saved||DOC_TEMPLATES[name]||'';
+}
+
+function saveDocEdits(){
+  docEdits[currentDoc]=document.getElementById('doc-textarea').value;
+  localStorage.setItem('crm_doc_edits',JSON.stringify(docEdits));
+}
+
+function resetDoc(){
+  if(!confirm('Reset to template? Your edits will be lost.'))return;
+  delete docEdits[currentDoc];
+  localStorage.setItem('crm_doc_edits',JSON.stringify(docEdits));
+  document.getElementById('doc-textarea').value=DOC_TEMPLATES[currentDoc]||'';
+}
+
+function populateDocLeadSelect(){
+  const sel=document.getElementById('doc-lead-select');
+  if(!sel)return;
+  sel.innerHTML='<option value="">Select lead to auto-fill...</option>'+
+    leads.map(l=>`<option value="${l.id}">${l.company} — ${l.first_name||l.email}</option>`).join('');
+}
+
+function autofillDocs(){
+  const id=document.getElementById('doc-lead-select')?.value;
+  if(!id)return alert('Select a lead first');
+  const l=leads.find(x=>x.id===id);if(!l)return;
+  const today=new Date().toLocaleDateString('en-US',{year:'numeric',month:'long',day:'numeric'});
+  const pkgFee=l.package==='1250'?'1,250':'750';
+  const deposit=l.package==='1250'?'312.50':'375.00';
+  let text=DOC_TEMPLATES[currentDoc]||'';
+  text=text.replace(/\[DATE\]/g,today)
+    .replace(/\[CLIENT NAME\]/g,l.first_name||'')
+    .replace(/\[CLIENT COMPANY\]/g,l.company||'')
+    .replace(/\[COMPANY NAME\]/g,l.company||'')
+    .replace(/\[CLIENT EMAIL\]/g,l.email||'')
+    .replace(/\[CLIENT TITLE\]/g,l.title||'')
+    .replace(/\[DEPOSIT AMOUNT\]/g,'$'+deposit)
+    .replace(/\[TOTAL FEE\]/g,'$'+pkgFee)
+    .replace(/\[DEPOSIT\]/g,'$'+deposit)
+    .replace(/\[FEE\]/g,pkgFee);
+  document.getElementById('doc-textarea').value=text;
+  docEdits[currentDoc]=text;
+  localStorage.setItem('crm_doc_edits',JSON.stringify(docEdits));
+}
+
+function copyDocText(){
+  navigator.clipboard.writeText(document.getElementById('doc-textarea')?.value||'')
+    .then(()=>alert('Copied to clipboard'));
+}
+
+function exportDocWord(){
+  const text=document.getElementById('doc-textarea')?.value||'';
+  const blob=new Blob([text],{type:'text/plain'});
+  const a=document.createElement('a');a.href=URL.createObjectURL(blob);
+  a.download=currentDoc+'_'+new Date().toISOString().split('T')[0]+'.txt';a.click();
+}
+
+// ── Scripts Content ───────────────────────────────────────────────
+const SCRIPTS={
+  architecture:[
+    {title:'Cold Email — Architecture',body:`Subject: 3 financial patterns I found in [industry] companies your size\n\nHi [First Name],\n\nI run a business diagnostics firm that audits the financial structure of [industry] companies in the $3M to $20M range. In recent engagements across Texas and Ohio, the same patterns come up consistently: pricing that doesn't reflect true job cost, vendor terms that haven't been renegotiated in years, and cash flow timing gaps that create shortfalls out of nowhere.\n\nI offer a $750 Eigenvalue Diagnostic — a written findings report that confirms whether these patterns exist in your business. No call required to start.\n\nWorth a look?\n\n— Richard J. Frank | Eigenvalue Consulting`},
+    {title:'Maybe Interested Response',body:`Hi [First Name],\n\nGood question — the process is low-friction on your end. You share three months of financials — an income statement and cash flow summary is enough. I ask a few quick questions about pricing and vendor payments.\n\nFrom there I deliver a written findings report in 5–7 business days. The $750 is all-in.\n\nHappy to send the intake form whenever you're ready.\n\n— Richard J. Frank`},
+    {title:'Asking for More Information',body:`Hi [First Name],\n\nThe diagnostic ($750) is a written assessment of what's structurally off in your financials. Most clients find one or two things they knew about and one they didn't.\n\nIf you move forward after the report, we rebuild the specific model — job costing, cash flow structure, or pricing. Everything is deployed as a Financial Monitor dashboard you keep. Implementation runs $2,000–$4,000 depending on scope.\n\nHappy to share a redacted example of a findings report if helpful.\n\n— Richard J. Frank`},
+    {title:'Interested — Close',body:`Hi [First Name],\n\nGlad to hear it. Here's how we proceed:\n\n1. Complete the intake form: [APPLICATION LINK]\n2. Submit the $750 fee: [STRIPE LINK]\n3. We confirm within 24 hours and begin.\n\nFinancials can be shared after payment — 3-month income statement and cash flow summary is all we need. NDA available on request.\n\nLooking forward to it.\n\n— Richard J. Frank`},
+  ],
+  blueprint:[
+    {title:'Cold Email — Blueprint',body:`Subject: 3 operational issues I see in [industry] companies your size\n\nHi [First Name],\n\nI work with [industry] operators in the $2M to $15M range on one specific problem: back-office processes that quietly drain margin without ever showing up clearly on a P&L. The pattern is almost always the same — POs approved verbally with no paper trail, invoices going out weeks late, and no dashboard to see what's actually happening day to day.\n\nMy $750 Eigenvalue Diagnostic confirms whether these exist in your operation. Delivered in 5–7 days. No call needed.\n\nInterested?\n\n— Richard J. Frank | Eigenvalue Consulting`},
+    {title:'Maybe Interested Response',body:`Hi [First Name],\n\nSimple process — I ask about how POs are approved, how invoices go out, and what system you're in. No transaction data needed.\n\nThe $750 diagnostic delivers a written findings report in 5–7 days — specific gaps, annual cost of each, and what fixing them would recover.\n\nHappy to send the intake form whenever you're ready.\n\n— Richard J. Frank`},
+    {title:'Asking for More Information',body:`Hi [First Name],\n\nAfter the diagnostic, if findings point to a process problem, we design the fix — PO approval workflow, AR trigger system, or inventory reorder process depending on where the gaps are.\n\nWe build a PO Management dashboard that plugs into your existing system. Your team runs it from day one. Implementation runs $1,500–$3,500 depending on scope.\n\n— Richard J. Frank`},
+    {title:'Interested — Close',body:`Hi [First Name],\n\n1. Intake form: [APPLICATION LINK]\n2. $750 fee: [STRIPE LINK]\n3. Confirm within 24 hours.\n\nI'll need a high-level view of your current process — how POs move, how invoices go out, what system you're in. No transaction data needed.\n\n— Richard J. Frank`},
+  ],
+  nucleus:[
+    {title:'Cold Email — Nucleus',body:`Subject: Quick question about [Company Name]'s team structure\n\nHi [First Name],\n\nI specialize in workforce retention and onboarding infrastructure for [industry] companies. The pattern I see in most operators your size is that institutional knowledge lives in a few people's heads, new hires take two to three months to be truly useful, and turnover is costing $8,000 to $15,000 per person with no one tracking it.\n\nMy $750 Eigenvalue Diagnostic reviews your current people structure and delivers a written report in 5–7 days.\n\nNo call required. Worth a look?\n\n— Richard J. Frank | Eigenvalue Consulting`},
+    {title:'Maybe Interested Response',body:`Hi [First Name],\n\nI ask about your current onboarding process, how long it takes a new hire to be productive, and how you handle situations when someone leaves. No HR system or formal documentation required.\n\nMost clients who get the most value are the ones who don't have those systems yet.\n\n— Richard J. Frank`},
+    {title:'Asking for More Information',body:`Hi [First Name],\n\nAfter the diagnostic, if findings point to a people problem, we build: an onboarding playbook, a role-based compensation structure, and a knowledge transfer system.\n\nWe also deploy an anonymous retention survey platform. Your team answers honestly because it's anonymous. You keep it.\n\nImplementation runs $1,500–$3,000 depending on scope.\n\n— Richard J. Frank`},
+    {title:'Interested — Close',body:`Hi [First Name],\n\n1. Intake form: [APPLICATION LINK]\n2. $750 fee: [STRIPE LINK]\n3. Confirm within 24 hours.\n\nFor the diagnostic I'll ask about headcount, turnover pattern, and what your onboarding looks like today. No confidential HR data required.\n\n— Richard J. Frank`},
+  ],
+  sarah:[
+    {title:'⚠️ Agreement — LOCKED (attorney review in progress)',body:`Hi [First Name],\n\nI'm Sarah Chen, working with Maii at Eigenvalue Consulting. Richard mentioned you're ready to move forward — wonderful to meet you.\n\nI've attached the Consulting Agreement and Engagement Letter for your review. Please let me know if you have any questions before signing. Once signed and the deposit is received, Maii will be in touch within 24 hours to begin your engagement.\n\nLooking forward to working with you.\n\n— Sarah Chen | Eigenvalue Consulting\nsarah@maxeconsulting.com`},
+    {title:'Solution Discovery — After Delivery',body:`Hi [First Name],\n\nNow that your diagnostic is complete, I wanted to follow up on the recommendation in your report.\n\nBased on what we found, the natural next step is [SOLUTION NAME]. Before we scope this properly, a few questions:\n\n1. When are you looking to implement this?\n2. Would you like to involve anyone else from your team in the conversation?\n3. On a scale of 1–10, how urgent is solving this problem right now?\n\nHappy to continue by email or jump on a quick call — whatever works best.\n\n— Sarah Chen | Eigenvalue Consulting`},
+    {title:'Deposit Follow-up',body:`Hi [First Name],\n\nJust following up on the agreement I sent over. Please let me know if you have any questions or if there's anything I can clarify before signing.\n\nPayment link: [STRIPE LINK]\n\n— Sarah Chen | Eigenvalue Consulting`},
+    {title:'Solution Proposal',body:`Hi [First Name],\n\nBased on our conversation and the diagnostic findings, our recommendation is:\n\n[SOLUTION NAME] — $[PRICE RANGE]\n\nWhat this includes:\n• [DELIVERABLE 1]\n• [DELIVERABLE 2]\n• [DELIVERABLE 3]\n\nTimeline: [TIMELINE]\nDeposit (50%): $[DEPOSIT] due before start\nBalance: $[BALANCE] due on delivery\n\nWould you like to move forward?\n\n— Sarah Chen | Eigenvalue Consulting`},
+    {title:'Post-Delivery (Frank sends)',body:`Hi [First Name],\n\nIt was a genuine pleasure working with you and the team at [COMPANY]. I hope the findings were useful and the direction is clearer.\n\nIf you ever have questions — even weeks or months from now — shoot me an email. I'm always happy to help.\n\nWishing you and the team the best.\n\n— Richard J. Frank | Eigenvalue Consulting\nrfrank@eigenvalueconsulting.com`},
+  ],
+  followup:[
+    {title:'Day 4 Follow-up',body:`Hi [First Name],\n\nWanted to make sure my last note didn't get buried — happy to answer any questions about the diagnostic before you decide.\n\nThe $750 stays regardless of timing.\n\n— Richard J. Frank`},
+    {title:'Day 12 — Final Touch',body:`Hi [First Name],\n\nLast note from me — if timing isn't right, happy to reconnect whenever it makes sense. The diagnostic stays at $750 regardless of when you move forward.\n\n— Richard J. Frank | Eigenvalue Consulting`},
+    {title:'90-Day Reactivation',body:`Hi [First Name],\n\nI wanted to check back in — last time we spoke the timing wasn't quite right. I'm curious if anything has changed for [COMPANY] since then.\n\nThe diagnostic is still $750 and still no-call-required to start.\n\n— Richard J. Frank | Eigenvalue Consulting`},
+  ],
+};
+
+function showScripts(type,btn){
+  document.querySelectorAll('[id^=script-btn-]').forEach(b=>{b.classList.remove('btn-primary');b.classList.add('btn-ghost');});
+  if(btn){btn.classList.remove('btn-ghost');btn.classList.add('btn-primary');}
+  const scripts=SCRIPTS[type]||[];
+  document.getElementById('scripts-content').innerHTML=scripts.map(s=>`
+    <div class="script-card">
+      <h4>${s.title}</h4>
+      <p>${s.body}</p>
+      <div style="margin-top:0.6rem;display:flex;gap:0.4rem">
+        <button class="btn btn-ghost btn-sm" onclick="navigator.clipboard.writeText(this.closest('.script-card').querySelector('p').textContent).then(()=>alert('Copied'))">Copy</button>
+        <button class="btn btn-ghost btn-sm" onclick="document.getElementById('ai-input').value='Improve this email: '+this.closest('.script-card').querySelector('p').textContent.substring(0,200);showTab('ai')">Improve with AI</button>
+      </div>
+    </div>`).join('');
+}
+
+// ── Onboarding Content ────────────────────────────────────────────
+const ONBOARDING={
+  frank:[
+    {title:'Your Mission',color:'gold',text:`You are the sales face of Eigenvalue Consulting. Your job is to find the right businesses, start the right conversations, and create enough trust that they say yes to the $750 diagnostic. That's it. You do not handle contracts. You do not quote solution prices. You do not manage active projects. You close — then you hand off to Sarah.\n\nYour tone: warm, direct, professional. You're not a salesperson — you're someone who has seen their problem before and knows how to fix it. That's how you write every email.`},
+    {title:'What You Can Do',color:'blue',text:`Send cold emails from rfrank@eigenvalueconsulting.com\nFollow up at Day 4 and Day 12 if no reply\nAnswer questions about the diagnostic process\nSend the application form and payment link when they're interested\nUpdate lead status after every interaction\nSend the warm post-delivery email after Maii completes a project\nAnswer follow-up questions from former clients — direct technical questions to Maii`},
+    {title:'What You Cannot Do',color:'blue',text:`Quote prices for solutions (Architecture/Blueprint/Nucleus) — that's Sarah after the diagnostic\nSend the consulting agreement — that's Sarah\nMake commitments about timelines or scope — that's Maii\nDiscount the diagnostic — it's always $750\nContact anyone marked Unsubscribed — ever\nSend more than 3 emails to any lead without a reply`},
+    {title:'Status Update Rules',color:'blue',text:`Every time you send an email: update email_sequence count\nThey replied with interest: mark Warm\nThey said yes to the diagnostic: mark Interested, send application link immediately\nThey submitted the application: mark Closed — Sarah takes over\nBad email bounce: mark Bounced immediately\nThey asked to stop: mark Unsubscribed immediately, never contact again\nNo reply after sequence 3: mark No Response`},
+  ],
+  sarah:[
+    {title:'Your Mission',color:'purple',text:`You are the legal, agreements, and account manager for Eigenvalue Consulting. You take over when Frank closes — the moment a lead says yes and submits their application. You send the agreement, collect the deposit, manage the client relationship during the engagement, and lead the solution upsell conversation after delivery.\n\nYour tone: professional, warm, organized. You're the person who makes the client feel safe — they can trust the process because you're running it cleanly.`},
+    {title:'What You Can Do',color:'purple',text:`Send and manage the Consulting Agreement from sarah@maxeconsulting.com\nSend the Engagement Letter for $750 diagnostics\nSend and follow up on deposit payment links\nLead the solution scoping conversation after delivery\nSend the solution proposal with pricing\nManage active clients during engagement\nAnswer administrative questions (timeline, process, what to expect)\nDirect technical questions to Maii`},
+    {title:'What You Cannot Do',color:'purple',text:`Send cold outreach — that's Frank's job\nModify agreement pricing without Maii's approval\nPromise deliverables not in the scope\nQuote implementation prices without reviewing the diagnostic findings first\nContact anyone marked Unsubscribed`},
+    {title:'Solution Scoping Script',color:'purple',text:`When a client has received their diagnostic and is ready for implementation:\n\n1. "Based on what we found, the natural next step is [SOLUTION]. Before we scope this properly, a few questions:"\n2. "When are you looking to implement this?"\n3. "Would you like to involve anyone else from your team?"\n4. "On a scale of 1–10, how urgent is solving this right now?"\n\nIf they say 7+: send the solution proposal within 24 hours.\nIf they say below 7: ask what would make it more urgent. Offer to reconnect in 30 days.`},
+  ],
+  products:[
+    {title:'Architecture — Financial Advisory',color:'gold',text:`Target industries: Manufacturing (NAICS 3100–3399), Logistics/Freight (4840–4849), SaaS/Tech (5112, 5415)\n\nCommon pain: Pricing not tied to job cost. Vendor terms never renegotiated. Cash flow timing gaps. No financial model.\n\nDiagnostic entry: $750 written report · $1,250 + live Zoom\nImplementation: $2,000–$4,000\nDeliverable: Financial Monitor dashboard they keep forever\n\nFrank's hook: "Pricing that doesn't account for true job cost causes an average margin loss of 8–12%. I see this in nearly every manufacturing company in your size range."`},
+    {title:'Blueprint — Operations & PO',color:'blue',text:`Target industries: Construction (NAICS 2360–2389), Wholesale/Distribution (4200–4299), Freight (4840–4849)\n\nCommon pain: PO approvals verbal. AR lags 15–30 days. No dashboard. Decisions made on gut.\n\nDiagnostic entry: $750 written report · $1,250 + live Zoom\nImplementation: $1,500–$3,500\nDeliverable: PO Management dashboard they keep forever\n\nFrank's hook: "Broken back-office processes don't show up clearly on a P&L — but they drain margin constantly. Invoices going out 2–3 weeks late is almost universal in construction."`},
+    {title:'Nucleus — People & Onboarding',color:'green',text:`Target industries: Construction (NAICS 2360–2389), Warehousing/3PL (4930–4939), Logistics (4840–4849), HVAC (2380)\n\nCommon pain: 30–50% annual turnover. No written onboarding. Institutional knowledge in 3 people's heads. No retention data.\n\nDiagnostic entry: $750 written report · $1,250 + live Zoom\nImplementation: $1,500–$3,000\nDeliverable: Onboarding platform + anonymous retention survey they keep forever\n\nFrank's hook: "Turnover costs $8,000–$15,000 per employee. Most operators in construction and logistics lose 5–8 people a year. That's $40,000–$120,000 in silent cost that never appears on a report."`},
+  ],
+  rules:[
+    {title:'Never Contact an Unsubscribed Lead',color:'red',text:`This is the only absolute rule in the CRM. If a lead is marked Unsubscribed, it means they asked to stop receiving communications. You never email them again. You never call them. You never add them back to a list. This is both ethical and legal.\n\nIf you're not sure whether to mark someone Unsubscribed — mark them. Err on the side of protecting them.`},
+    {title:'One Email, One Goal',color:'blue',text:`Every email Frank sends has exactly one goal. Cold email: get them to reply. Follow-up: keep the door open. Close email: get them to click the application link. Post-delivery: leave the door open for the future.\n\nNever try to explain the product, pitch the solution, AND ask for the sale in the same email. One thing per email.`},
+    {title:'Data Accuracy',color:'blue',text:`Update lead status after every interaction — same day. The CRM is only useful if it reflects reality.\n\nIf an email bounces: mark it immediately. If they reply: mark it immediately. If they say stop: mark it immediately.\n\nMaii reviews pipeline weekly. If statuses aren't current, the whole system breaks down.`},
+  ],
+};
+
+function showOnboarding(type,btn){
+  document.querySelectorAll('#tab-onboarding .btn').forEach(b=>{b.classList.remove('btn-primary');b.classList.add('btn-ghost');});
+  if(btn){btn.classList.remove('btn-ghost');btn.classList.add('btn-primary');}
+  const cards=ONBOARDING[type]||[];
+  const colorMap={gold:'var(--gold)',blue:'var(--blue)',green:'var(--green)',purple:'var(--purple)',red:'var(--red)'};
+  document.getElementById('onboarding-content').innerHTML=cards.map(c=>`
+    <div class="ob-card" style="border-left-color:${colorMap[c.color]||'var(--blue)'}">
+      <h3>${c.title}</h3>
+      <p>${c.body||c.text||''}</p>
+    </div>`).join('');
+}
+
+// ── Stats Update ──────────────────────────────────────────────────
+function updateStats(){
+  const total=leads.length;
+  const frankActive=leads.filter(l=>l.owner==='frank'&&!['unsubscribed','post_delivery','no_response'].includes(l.status)).length;
+  const sarahActive=leads.filter(l=>l.owner==='sarah').length;
+  const delivered=leads.filter(l=>l.status==='delivered'||l.status==='post_delivery').length;
+  const pipeline=leads.filter(l=>['interested','closed','agreement_signed','active'].includes(l.status)).length*750;
+
+  document.getElementById('ts-total').textContent=total;
+  document.getElementById('ts-frank').textContent=frankActive;
+  document.getElementById('ts-sarah').textContent=sarahActive;
+  document.getElementById('ts-revenue').textContent='$'+(pipeline>=1000?(pipeline/1000).toFixed(0)+'k':pipeline);
+  document.getElementById('frank-badge').textContent=frankActive;
+  document.getElementById('sarah-badge').textContent=sarahActive;
+  document.getElementById('d-total').textContent=total;
+  document.getElementById('d-frank').textContent=frankActive;
+  document.getElementById('d-sarah').textContent=sarahActive;
+  document.getElementById('d-delivered').textContent=delivered;
+  document.getElementById('d-pipeline').textContent='$'+(pipeline>=1000?(pipeline/1000).toFixed(0)+'k':pipeline);
+
+  const statuses=['warm','interested','active','delivered','bounced','unsubscribed'];
+  statuses.forEach(s=>{
+    const el=document.getElementById('sf-'+s);
+    if(el)el.textContent=leads.filter(l=>l.status===s).length;
+  });
+  document.getElementById('sf-all').textContent=total;
+  document.getElementById('sf-frank').textContent=frankActive;
+  document.getElementById('sf-sarah').textContent=sarahActive;
+  ['Architecture','Blueprint','Nucleus'].forEach(p=>{
+    const key=p==='Architecture'?'arch':p==='Blueprint'?'blue':'nuc';
+    const el=document.getElementById('sf-'+key);
+    if(el)el.textContent=leads.filter(l=>l.product===p).length;
+  });
+
+  // AI lead context dropdown
+  const sel=document.getElementById('ai-lead-ctx');
+  if(sel){
+    const cur=sel.value;
+    sel.innerHTML='<option value="">No lead context</option>'+
+      leads.map(l=>`<option value="${l.id}" ${l.id===cur?'selected':''}>${l.company} — ${l.first_name||''} (${STATUSES[l.status]?.label||l.status})</option>`).join('');
+  }
+}
+
+// ── Settings ──────────────────────────────────────────────────────
+function saveSettings(){
+  const fields={
+    'crm_client_id':'s-client-id',
+    'crm_tenant_id':'s-tenant-id',
+    'crm_client_secret':'s-client-secret',
+    'crm_frank_email':'s-frank-email',
+    'crm_sarah_email':'s-sarah-email',
+    'crm_notify_email':'s-notify-email',
+    'crm_supa_url':'s-supa-url',
+    'crm_supa_key':'s-supa-key',
+    'crm_resend_key':'s-resend-key',
+    'crm_twilio_sid':'s-twilio-sid',
+    'crm_twilio_token':'s-twilio-token',
+    'crm_twilio_phone':'s-twilio-phone',
+  };
+  Object.entries(fields).forEach(([key,id])=>{
+    const el=document.getElementById(id);
+    if(el&&el.value)localStorage.setItem(key,el.value);
+  });
+  alert('Settings saved');
+}
+
+function loadSettings(){
+  const fields={
+    'crm_client_id':'s-client-id',
+    'crm_tenant_id':'s-tenant-id',
+    'crm_client_secret':'s-client-secret',
+    'crm_frank_email':'s-frank-email',
+    'crm_sarah_email':'s-sarah-email',
+    'crm_notify_email':'s-notify-email',
+    'crm_supa_url':'s-supa-url',
+    'crm_supa_key':'s-supa-key',
+    'crm_resend_key':'s-resend-key',
+    'crm_twilio_sid':'s-twilio-sid',
+    'crm_twilio_token':'s-twilio-token',
+    'crm_twilio_phone':'s-twilio-phone',
+  };
+  Object.entries(fields).forEach(([key,id])=>{
+    const val=localStorage.getItem(key);
+    const el=document.getElementById(id);
+    if(val&&el){el.value=val;}
+  });
+  // Show saved indicator next to supa key if it exists
+  const supaKey=localStorage.getItem('crm_supa_key');
+  const supaEl=document.getElementById('supa-saved-indicator');
+  if(supaEl)supaEl.textContent=supaKey?'✓ Key saved':'Not saved';
+}
+
+function saveSupabase(){
+  const url=document.getElementById('s-supa-url')?.value?.trim();
+  const key=document.getElementById('s-supa-key')?.value?.trim();
+  if(!url||!key){alert('Paste both Supabase URL and Anon Key first');return;}
+  localStorage.setItem('crm_supa_url',url);
+  localStorage.setItem('crm_supa_key',key);
+  const ind=document.getElementById('supa-saved-indicator');
+  if(ind)ind.textContent='✓ Key saved';
+  alert('Supabase keys saved. Click Test Connection to verify.');
+}
+
+async function testEmail(){
+  const statusEl=document.getElementById('send-status');
+  alert('Test email will attempt to send from '+FRANK_EMAIL+'. Check console for result.');
+  // Uses same sendEmail flow with a test recipient
+}
+
+// ── Supabase Check ────────────────────────────────────────────────
+async function checkSupabase(){
+  const supaUrl=localStorage.getItem('crm_supa_url')||'';
+  const supaKey=localStorage.getItem('crm_supa_key')||'';
+  if(!supaUrl||!supaKey){
+    const el=document.getElementById('supa-conn-status');
+    if(el)el.innerHTML='<span class="status-dot dot-amber"></span>Add Supabase URL and Key in Settings';
+    return;
+  }
+  const supaClient=supabase.createClient(supaUrl,supaKey);
+  try{
+    const{data,error}=await supaClient.from('email_leads').select('id').limit(1);
+    const el=document.getElementById('supa-conn-status');
+    if(!error&&el)el.innerHTML='<span class="status-dot dot-green"></span>Connected to Supabase';
+    document.getElementById('conn-status').innerHTML='<span class="status-dot dot-green"></span>Live';
+  }catch(e){
+    const el=document.getElementById('supa-conn-status');
+    if(el)el.innerHTML='<span class="status-dot dot-red"></span>Connection error: '+e.message;
+  }
+}
+
+// ── Modal ────────────────────────────────────────────────────────
+function closeModal(id){document.getElementById(id).style.display='none';}
+function loadDocLead(){autofillDocs();}
+
+// ── Import from LIPC CSV ─────────────────────────────────────────
+function importFromLIPCcsv(input){
+  const file = input.files[0];
+  if(!file) return;
+  const reader = new FileReader();
+  reader.onload = function(e){
+    const lines = e.target.result.split('\n');
+    const headers = lines[0].split(',').map(h => h.replace(/"/g,'').trim().toLowerCase());
+    let added = 0, dupes = 0;
+    for(let i = 1; i < lines.length; i++){
+      if(!lines[i].trim()) continue;
+      const vals = lines[i].match(/(".*?"|[^,]+)(?=\s*,|\s*$)/g)||[];
+      const row = {};
+      headers.forEach((h,idx) => { row[h] = (vals[idx]||'').replace(/^"|"$/g,'').trim(); });
+      const email = row['email']||'';
+      const company = row['company']||'';
+      if(!email && !company) continue;
+      const exists = leads.find(l => l.email && l.email === email);
+      if(exists){ dupes++; continue; }
+      leads.push({
+        id: crypto.randomUUID(),
+        company: company,
+        first_name: row['first_name']||row['contact_name']?.split(' ')[0]||'',
+        email: email,
+        phone: row['phone']||'',
+        title: row['title']||'',
+        industry: row['industry']||'',
+        state: row['state']||'',
+        postal_code: row['postal_code']||'',
+        website: row['website']||'',
+        linkedin: row['linkedin']||'',
+        product: guessProduct(row['industry']||''),
+        status: 'sent',
+        owner: 'frank',
+        lipc_score: parseInt(row['score'])||0,
+        date_entered: row['date_entered']||new Date().toISOString().split('T')[0],
+        notes: '',
+        email_sequence: 0,
+        created_at: new Date().toISOString(),
+      });
+      added++;
+    }
+    saveLeads(); applyFilters(); renderKanban(); updateStats();
+    alert(`Imported ${added} leads from LIPC CSV\n${dupes} duplicates skipped\nTotal in CRM: ${leads.length}`);
+  };
+  reader.readAsText(file);
+}
+
+// ── Upload Final Documents ───────────────────────────────────────
+function uploadFinalDoc(input){
+  const file = input.files[0];
+  if(!file) return;
+  const reader = new FileReader();
+  reader.onload = function(e){
+    const docs = JSON.parse(localStorage.getItem('crm_uploaded_docs')||'[]');
+    // Keep only latest version of same filename
+    const idx = docs.findIndex(d=>d.name===file.name);
+    const entry = {name:file.name, type:file.type, data:e.target.result, uploaded:new Date().toLocaleDateString()};
+    if(idx>=0) docs[idx]=entry; else docs.push(entry);
+    localStorage.setItem('crm_uploaded_docs', JSON.stringify(docs));
+    // Store application files specially for easy download
+    if(file.name.toLowerCase().includes('application') && file.type==='application/pdf'){
+      localStorage.setItem('crm_app_pdf', e.target.result);
+    }
+    if(file.name.toLowerCase().includes('application') && (file.name.endsWith('.docx')||file.name.endsWith('.doc'))){
+      localStorage.setItem('crm_app_docx', e.target.result);
+    }
+    renderUploadedDocs();
+    wirePDFdownload();
+    alert(file.name + ' uploaded successfully.');
+  };
+  reader.readAsDataURL(file);
+}
+
+function wirePDFdownload(){
+  // PDF is stored as base64 in localStorage after first load from uploadFinalDoc
+  // Or user can download from the embedded link
+  const pdfData = localStorage.getItem('crm_app_pdf');
+  const docxData = localStorage.getItem('crm_app_docx');
+  const pdfLink = document.getElementById('pdf-download-link');
+  const docxLink = document.getElementById('docx-download-link');
+  if(pdfData && pdfLink) pdfLink.href = pdfData;
+  if(docxData && docxLink) docxLink.href = docxData;
+}
+
+function renderUploadedDocs(){
+  const el = document.getElementById('uploaded-docs-list');
+  if(!el) return;
+  const docs = JSON.parse(localStorage.getItem('crm_uploaded_docs')||'[]');
+  el.innerHTML = docs.map((d,i) =>
+    `<div style="font-size:0.7rem;padding:0.25rem 0;color:var(--muted);display:flex;justify-content:space-between;align-items:center">
+      <span style="overflow:hidden;text-overflow:ellipsis;white-space:nowrap;max-width:110px" title="${d.name}">${d.name}</span>
+      <div style="display:flex;gap:4px;flex-shrink:0">
+        <a href="${d.data}" download="${d.name}" style="color:var(--gold);font-size:0.65rem;text-decoration:none">↓</a>
+        <button onclick="removeUploadedDoc(${i})" style="background:none;border:none;color:var(--red);cursor:pointer;font-size:0.65rem">✕</button>
+      </div>
+    </div>`
+  ).join('') || '';
+}
+
+function removeUploadedDoc(idx){
+  const docs = JSON.parse(localStorage.getItem('crm_uploaded_docs')||'[]');
+  docs.splice(idx,1);
+  localStorage.setItem('crm_uploaded_docs', JSON.stringify(docs));
+  renderUploadedDocs();
+}
+
+// ── Init ──────────────────────────────────────────────────────────
+loadSettings();
+filtered=[...leads];
+updateStats();
+renderKanban();
+renderPipelineTable();
+checkSupabase();
+renderUploadedDocs();
+wirePDFdownload();
+showScripts('architecture',document.getElementById('script-btn-arch'));
+showOnboarding('frank',null);
+loadDoc('application');
+</script>
+</body>
+</html>
