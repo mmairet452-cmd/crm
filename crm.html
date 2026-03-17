@@ -290,7 +290,7 @@ tr:hover td{background:rgba(26,115,232,0.04)}
 
     <!-- FRANK TAB -->
     <div id="tab-frank" class="page">
-      <div class="info">Frank's active leads — select a lead to compose email or update status. All emails send from rfrank@maxeconsulting.com via Microsoft Graph.</div>
+      <div class="info">Frank's active leads — emails send via Resend (clean IPs) · displayed as Richard J. Frank · replies go to rfrank@maxeconsulting.com</div>
       <div style="display:flex;gap:0.5rem;margin-bottom:0.8rem;align-items:center;flex-wrap:wrap">
         <button class="btn btn-primary btn-sm" onclick="bulkSendAll()">⚡ Send All Selected</button>
         <button class="btn btn-ghost btn-sm" onclick="frankSelectAll()">Select All</button>
@@ -636,7 +636,17 @@ tr:hover td{background:rgba(26,115,232,0.04)}
         <select id="add-owner"><option value="frank">Frank</option><option value="sarah">Sarah</option></select>
       </div>
     </div>
-    <div class="field-group"><label>Notes</label><textarea id="add-notes" style="min-height:80px"></textarea></div>
+    <div class="two-col">
+      <div class="field-group"><label>Package</label>
+        <select id="add-package">
+          <option value="">Not selected</option>
+          <option value="750">Advisory Session — $750</option>
+          <option value="1250">Advisory + Zoom — $1,250</option>
+        </select>
+      </div>
+      <div class="field-group"><label>Website</label><input type="text" id="add-website" placeholder="https://..."/></div>
+    </div>
+    <div class="field-group"><label>Notes</label><textarea id="add-notes" style="min-height:60px"></textarea></div>
     <div style="display:flex;gap:0.5rem;justify-content:flex-end;margin-top:0.5rem">
       <button class="btn btn-ghost" onclick="closeModal('modal-add')">Cancel</button>
       <button class="btn btn-primary" onclick="addLead()">Add Lead</button>
@@ -845,43 +855,120 @@ function openLeadModal(id){
   selectedLead=l;
   document.getElementById('modal-lead-title').textContent=l.company+' — '+l.first_name;
   const nextStatuses=STATUSES[l.status]?.next||[];
+  const pkgLabel = l.package==='1250'?'Advisory + Zoom — $1,250':l.package==='750'?'Advisory Session — $750':'Not selected';
+  const pkgVal = parseInt(l.package)||0;
+  const solInterest = l.solution_interest||[];
   document.getElementById('modal-lead-body').innerHTML=`
-    <div class="two-col" style="gap:0.8rem;margin-bottom:1rem">
-      <div>
-        <div style="font-size:0.68rem;color:var(--muted);text-transform:uppercase;letter-spacing:0.1em;margin-bottom:0.4rem">Contact</div>
-        <div style="font-size:0.85rem;font-weight:600">${l.company}</div>
-        <div style="font-size:0.8rem;color:var(--muted)">${l.first_name||''} · ${l.title||'No title'}</div>
-        <div style="font-size:0.8rem;color:var(--blue2)">${l.email}</div>
-        <div style="font-size:0.8rem;color:var(--muted)">${l.phone||'No phone'}</div>
-        <div style="font-size:0.78rem;color:var(--muted);margin-top:0.3rem">${l.industry||''} · ${l.state||''} ${l.postal_code||''}</div>
+    <!-- ROW 1: Contact + Pipeline -->
+    <div class="two-col" style="gap:0.8rem;margin-bottom:0.8rem">
+      <div style="background:var(--bg3);border:1px solid var(--border);border-radius:var(--r);padding:0.8rem">
+        <div style="font-size:0.65rem;color:var(--muted);text-transform:uppercase;letter-spacing:0.1em;margin-bottom:0.5rem">Contact</div>
+        <div style="font-size:0.9rem;font-weight:600;margin-bottom:0.2rem">${l.company}</div>
+        <div style="font-size:0.8rem;color:var(--muted)">${l.first_name||''} ${l.last_name||''} · ${l.title||'No title'}</div>
+        <div style="font-size:0.8rem;color:var(--blue2);margin-top:0.2rem">${l.email}</div>
+        <div style="font-size:0.78rem;color:var(--muted)">${l.phone||'No phone'}</div>
+        <div style="font-size:0.78rem;color:var(--muted)">${l.industry||''} · ${l.state||''} ${l.postal_code||''}</div>
+        ${l.website?`<div style="margin-top:0.3rem"><a href="${l.website}" target="_blank" style="color:var(--gold);font-size:0.75rem">${l.website}</a></div>`:''}
+        <div style="margin-top:0.4rem;display:flex;gap:0.3rem;flex-wrap:wrap">
+          <span style="font-size:0.68rem;color:var(--muted)">LIPC Score:</span>
+          <span style="font-size:0.68rem;color:var(--gold);font-weight:600">${l.lipc_score||'—'}</span>
+          <span style="font-size:0.68rem;color:var(--muted);margin-left:0.5rem">Seq #${l.email_sequence||0}</span>
+          ${l.email_delivery_status?`<span class="pill p-${l.email_delivery_status==='delivered'?'closed':l.email_delivery_status==='bounced'?'bounced':'sent'}" style="font-size:0.6rem">${l.email_delivery_status}</span>`:''}
+        </div>
       </div>
-      <div>
-        <div style="font-size:0.68rem;color:var(--muted);text-transform:uppercase;letter-spacing:0.1em;margin-bottom:0.4rem">Pipeline</div>
-        <div style="margin-bottom:0.4rem"><span class="pill ${statusPill(l.status)}">${STATUSES[l.status]?.label||l.status}</span></div>
-        <div style="font-size:0.78rem;color:var(--muted)">Product: <span style="color:var(--gold)">${l.product||'—'}</span></div>
-        <div style="font-size:0.78rem;color:var(--muted)">Owner: <span style="color:${l.owner==='frank'?'var(--amber)':'var(--purple)'}">${l.owner||'—'}</span></div>
-        <div style="font-size:0.78rem;color:var(--muted)">Date in: ${l.date_entered||'—'}</div>
-        <div style="font-size:0.78rem;color:var(--muted)">Email sequence: #${l.email_sequence||0}</div>
-        <div style="font-size:0.78rem;color:var(--muted)">LIPC Score: ${l.lipc_score||'—'}</div>
+      <div style="background:var(--bg3);border:1px solid var(--border);border-radius:var(--r);padding:0.8rem">
+        <div style="font-size:0.65rem;color:var(--muted);text-transform:uppercase;letter-spacing:0.1em;margin-bottom:0.5rem">Pipeline</div>
+        <div style="margin-bottom:0.5rem"><span class="pill ${statusPill(l.status)}">${STATUSES[l.status]?.label||l.status}</span>
+        ${l.on_hold?`<span class="pill p-noresp" style="margin-left:4px">On Hold · ${l.hold_days||0}d</span>`:''}
+        </div>
+        <div style="font-size:0.75rem;color:var(--muted)">Product: <span style="color:var(--gold)">${l.product||'—'}</span></div>
+        <div style="font-size:0.75rem;color:var(--muted)">Package: <span style="color:var(--text)">${pkgLabel}</span></div>
+        <div style="font-size:0.75rem;color:var(--muted)">Owner: <span style="color:${l.owner==='frank'?'var(--amber)':'var(--purple)'}">${l.owner||'—'}</span></div>
+        <div style="font-size:0.75rem;color:var(--muted)">Date in: ${l.date_entered||'—'}</div>
+        ${l.product_delivered?`<div style="font-size:0.75rem;color:var(--green)">✓ Delivered ${l.delivered_date||''}</div>`:''}
       </div>
     </div>
-    ${nextStatuses.length?`<div style="margin-bottom:0.8rem">
-      <div style="font-size:0.68rem;color:var(--muted);text-transform:uppercase;letter-spacing:0.1em;margin-bottom:0.4rem">Move to Status</div>
-      <div style="display:flex;gap:0.4rem;flex-wrap:wrap">
-        ${nextStatuses.map(s=>`<button class="btn btn-ghost btn-sm" onclick="setLeadStatus('${l.id}','${s}');closeModal('modal-lead')">${STATUSES[s]?.label||s}</button>`).join('')}
+
+    <!-- ROW 2: Financial Tracking -->
+    <div style="background:var(--bg3);border:1px solid var(--border);border-radius:var(--r);padding:0.8rem;margin-bottom:0.8rem">
+      <div style="font-size:0.65rem;color:var(--muted);text-transform:uppercase;letter-spacing:0.1em;margin-bottom:0.6rem">Financial & Documents</div>
+      <div style="display:grid;grid-template-columns:repeat(3,1fr);gap:0.4rem;margin-bottom:0.6rem">
+        ${['deposit_paid','invoice_issued','paid_full','application_signed','agreement_signed','product_delivered'].map(field=>{
+          const labels={'deposit_paid':'Deposit Paid','invoice_issued':'Invoice Issued','paid_full':'Paid in Full','application_signed':'Application Signed','agreement_signed':'Agreement Signed','product_delivered':'Product Delivered'};
+          const checked=l[field]?'checked':'';
+          return `<label style="display:flex;align-items:center;gap:0.4rem;font-size:0.75rem;cursor:pointer;padding:0.3rem;background:var(--bg2);border-radius:4px;border:1px solid ${l[field]?'var(--green)':'var(--border)'}">
+            <input type="checkbox" ${checked} onchange="toggleLeadField('${l.id}','${field}',this.checked)" style="accent-color:var(--green)"/>
+            <span style="color:${l[field]?'var(--green)':'var(--muted)'}">${labels[field]}</span>
+          </label>`;
+        }).join('')}
       </div>
-    </div>`:''}
+      <div style="display:flex;gap:0.5rem;align-items:center;flex-wrap:wrap">
+        <span style="font-size:0.72rem;color:var(--muted)">Package:</span>
+        <select onchange="updateLeadPackage('${l.id}',this.value)" style="font-size:0.72rem;padding:0.2rem 0.4rem">
+          <option value="" ${!l.package?'selected':''}>Not selected</option>
+          <option value="750" ${l.package==='750'?'selected':''}>Advisory Session — $750</option>
+          <option value="1250" ${l.package==='1250'?'selected':''}>Advisory + Zoom — $1,250</option>
+        </select>
+        ${pkgVal?`<span style="font-size:0.72rem;color:var(--gold);font-weight:600">$${pkgVal} total · $${pkgVal*0.5} deposit</span>`:''}
+      </div>
+    </div>
+
+    <!-- ROW 3: Solution Interest -->
+    <div style="background:var(--bg3);border:1px solid var(--border);border-radius:var(--r);padding:0.8rem;margin-bottom:0.8rem">
+      <div style="font-size:0.65rem;color:var(--muted);text-transform:uppercase;letter-spacing:0.1em;margin-bottom:0.6rem">Solution Interest (post-delivery)</div>
+      <div style="display:flex;gap:0.4rem;flex-wrap:wrap;margin-bottom:0.5rem">
+        ${[
+          {key:'architecture',label:'Architecture',price:'$2,000–$4,000'},
+          {key:'blueprint',label:'Blueprint',price:'$1,500–$3,500'},
+          {key:'nucleus',label:'Nucleus',price:'$1,500–$3,000'},
+        ].map(s=>{
+          const sel=solInterest.includes(s.key);
+          return `<label style="display:flex;align-items:center;gap:0.4rem;font-size:0.75rem;cursor:pointer;padding:0.4rem 0.6rem;background:var(--bg2);border-radius:4px;border:1px solid ${sel?'var(--gold)':'var(--border)'}">
+            <input type="checkbox" ${sel?'checked':''} onchange="toggleSolutionInterest('${l.id}','${s.key}',this.checked)" style="accent-color:var(--gold)"/>
+            <span style="color:${sel?'var(--gold)':'var(--muted)'}">${s.label}</span>
+            <span style="font-size:0.68rem;color:var(--muted)">${s.price}</span>
+          </label>`;
+        }).join('')}
+      </div>
+      <div style="display:flex;gap:0.5rem;align-items:center">
+        <span style="font-size:0.72rem;color:var(--muted)">Custom price:</span>
+        <input type="text" value="${l.solution_price||''}" placeholder="e.g. $2,500" onchange="updateLeadField('${l.id}','solution_price',this.value)" style="width:120px;font-size:0.72rem;padding:0.2rem 0.4rem"/>
+      </div>
+    </div>
+
+    <!-- ROW 4: Hold + Status + Actions -->
+    <div style="display:grid;grid-template-columns:1fr 1fr;gap:0.8rem;margin-bottom:0.8rem">
+      <div style="background:var(--bg3);border:1px solid var(--border);border-radius:var(--r);padding:0.8rem">
+        <div style="font-size:0.65rem;color:var(--muted);text-transform:uppercase;letter-spacing:0.1em;margin-bottom:0.5rem">Put on Hold</div>
+        <label style="display:flex;align-items:center;gap:0.5rem;font-size:0.78rem;cursor:pointer;margin-bottom:0.5rem">
+          <input type="checkbox" id="hold-toggle" ${l.on_hold?'checked':''} onchange="toggleHold('${l.id}',this.checked)" style="accent-color:var(--amber)"/>
+          <span>On hold</span>
+        </label>
+        <div style="display:flex;align-items:center;gap:0.4rem">
+          <span style="font-size:0.72rem;color:var(--muted)">Days:</span>
+          <input type="number" id="hold-days" value="${l.hold_days||30}" min="1" max="365" style="width:60px;font-size:0.72rem;padding:0.2rem 0.4rem" onchange="updateHoldDays('${l.id}',this.value)"/>
+          ${l.hold_resume?`<span style="font-size:0.68rem;color:var(--amber)">Resume: ${l.hold_resume}</span>`:''}
+        </div>
+      </div>
+      <div style="background:var(--bg3);border:1px solid var(--border);border-radius:var(--r);padding:0.8rem">
+        <div style="font-size:0.65rem;color:var(--muted);text-transform:uppercase;letter-spacing:0.1em;margin-bottom:0.5rem">Move Status</div>
+        <div style="display:flex;gap:0.3rem;flex-wrap:wrap">
+          ${nextStatuses.map(s=>`<button class="btn btn-ghost btn-sm" style="font-size:0.68rem" onclick="setLeadStatus('${l.id}','${s}');closeModal('modal-lead')">${STATUSES[s]?.label||s}</button>`).join('')}
+        </div>
+        <div style="margin-top:0.4rem;display:flex;gap:0.3rem;flex-wrap:wrap">
+          ${['Architecture','Blueprint','Nucleus'].map(p=>`<button class="btn btn-sm ${l.product===p?'btn-gold':'btn-ghost'}" style="font-size:0.68rem" onclick="setLeadProduct('${l.id}','${p}')">${p}</button>`).join('')}
+        </div>
+      </div>
+    </div>
+
+    <!-- Notes -->
     <div style="margin-bottom:0.8rem">
-      <div style="font-size:0.68rem;color:var(--muted);text-transform:uppercase;letter-spacing:0.1em;margin-bottom:0.4rem">Product Assignment</div>
-      <div style="display:flex;gap:0.4rem">
-        ${['Architecture','Blueprint','Nucleus'].map(p=>`<button class="btn btn-sm ${l.product===p?'btn-gold':'btn-ghost'}" onclick="setLeadProduct('${l.id}','${p}')">${p}</button>`).join('')}
-      </div>
+      <div style="font-size:0.65rem;color:var(--muted);text-transform:uppercase;letter-spacing:0.1em;margin-bottom:0.3rem">Notes</div>
+      <textarea id="modal-notes" style="width:100%;min-height:70px;font-size:0.8rem" onchange="saveLeadNotes('${l.id}')">${l.notes||''}</textarea>
     </div>
-    <div style="margin-bottom:0.8rem">
-      <div style="font-size:0.68rem;color:var(--muted);text-transform:uppercase;letter-spacing:0.1em;margin-bottom:0.3rem">Notes</div>
-      <textarea id="modal-notes" style="width:100%;min-height:80px;font-size:0.8rem" onchange="saveLeadNotes('${l.id}')">${l.notes||''}</textarea>
-    </div>
-    <div style="display:flex;gap:0.5rem;justify-content:flex-end">
+
+    <!-- Actions -->
+    <div style="display:flex;gap:0.5rem;justify-content:flex-end;flex-wrap:wrap">
       <button class="btn btn-primary btn-sm" onclick="openCompose('${l.id}');closeModal('modal-lead')">Compose Email</button>
       <button class="btn btn-ghost btn-sm" onclick="openAIForLead('${l.id}');closeModal('modal-lead')">Ask AI</button>
       ${l.status==='unsubscribed'?'':`<button class="btn btn-red btn-sm" onclick="setLeadStatus('${l.id}','unsubscribed');closeModal('modal-lead')">Unsubscribe</button>`}
@@ -910,6 +997,83 @@ function setLeadProduct(id,product){
 function saveLeadNotes(id){
   const l=leads.find(x=>x.id===id);if(!l)return;
   l.notes=document.getElementById('modal-notes')?.value||'';
+  saveLeads();
+}
+
+function toggleLeadField(id,field,val){
+  const l=leads.find(x=>x.id===id);if(!l)return;
+  l[field]=val;
+  if(field==='product_delivered'&&val) l.delivered_date=new Date().toLocaleDateString();
+  saveLeads();updateStats();
+  // Refresh modal checkboxes visual
+  const label=event.target.closest('label');
+  if(label){
+    label.style.borderColor=val?'var(--green)':'var(--border)';
+    label.querySelector('span').style.color=val?'var(--green)':'var(--muted)';
+  }
+}
+
+function toggleSolutionInterest(id,solution,val){
+  const l=leads.find(x=>x.id===id);if(!l)return;
+  if(!l.solution_interest)l.solution_interest=[];
+  if(val&&!l.solution_interest.includes(solution))l.solution_interest.push(solution);
+  if(!val)l.solution_interest=l.solution_interest.filter(s=>s!==solution);
+  saveLeads();
+  const label=event.target.closest('label');
+  if(label){
+    label.style.borderColor=val?'var(--gold)':'var(--border)';
+    label.querySelector('span').style.color=val?'var(--gold)':'var(--muted)';
+  }
+}
+
+function updateLeadPackage(id,val){
+  const l=leads.find(x=>x.id===id);if(!l)return;
+  l.package=val;saveLeads();updateStats();
+}
+
+function updateLeadField(id,field,val){
+  const l=leads.find(x=>x.id===id);if(!l)return;
+  l[field]=val;saveLeads();
+}
+
+function toggleHold(id,val){
+  const l=leads.find(x=>x.id===id);if(!l)return;
+  l.on_hold=val;
+  if(val){
+    l.hold_start=new Date().toISOString().split('T')[0];
+    const days=parseInt(document.getElementById('hold-days')?.value)||30;
+    l.hold_days=days;
+    const resume=new Date();resume.setDate(resume.getDate()+days);
+    l.hold_resume=resume.toLocaleDateString();
+    addLog('system','Put on hold: '+l.company+' · resume '+l.hold_resume);
+  } else {
+    l.hold_resume='';l.hold_start='';
+    addLog('system','Hold removed: '+l.company);
+  }
+  saveLeads();updateStats();
+}
+
+function updateHoldDays(id,days){
+  const l=leads.find(x=>x.id===id);if(!l)return;
+  l.hold_days=parseInt(days)||30;
+  if(l.hold_start){
+    const resume=new Date(l.hold_start);resume.setDate(resume.getDate()+l.hold_days);
+    l.hold_resume=resume.toLocaleDateString();
+  }
+  saveLeads();
+}
+
+function checkHoldResumed(){
+  const today=new Date();
+  leads.forEach(l=>{
+    if(l.on_hold&&l.hold_resume){
+      const resumeDate=new Date(l.hold_resume);
+      if(today>=resumeDate){
+        l.on_hold=false;l.hold_resume='';
+        addLog('system','Auto-resumed from hold: '+l.company);
+      }
+    }
+  });
   saveLeads();
 }
 
@@ -996,11 +1160,12 @@ async function bulkSendAll(){
   for(const id of checked){
     const l=leads.find(x=>x.id===id);
     if(!l)continue;
+    if(l.on_hold){statusEl.textContent='Skipping '+l.company+' (on hold)...';await new Promise(r=>setTimeout(r,400));continue;}
     const template=getEmailTemplate(l,true);
     statusEl.textContent=`Sending ${sent+failed+1} of ${checked.length} — ${l.company}...`;
     try{
         // M365 credentials handled by /api/email proxy on Vercel
-      const res=await fetch('/api/email',{
+      const res=await fetch('/api/sendemail',{
         method:'POST',
         headers:{'Content-Type':'application/json'},
         body:JSON.stringify({
@@ -1008,8 +1173,7 @@ async function bulkSendAll(){
           toEmail:l.email,
           toName:l.first_name||l.company,
           subject:template.subject,
-          body:template.body,
-          saveToSent:true
+          body:template.body
         })
       });
       const data=await res.json();
@@ -1134,7 +1298,8 @@ async function sendEmail(id,isFrank){
   const statusEl=document.getElementById('send-status');
   if(statusEl){statusEl.textContent='Sending...';statusEl.style.color='var(--amber)';}
   try {
-    const res=await fetch('/api/email',{
+    // Route through Resend for clean IP delivery
+    const res=await fetch('/api/sendemail',{
       method:'POST',
       headers:{'Content-Type':'application/json'},
       body:JSON.stringify({
@@ -1142,8 +1307,7 @@ async function sendEmail(id,isFrank){
         toEmail:l.email,
         toName:l.first_name||l.company,
         subject,
-        body,
-        saveToSent:true
+        body
       })
     });
     const data=await res.json();
@@ -1152,7 +1316,7 @@ async function sendEmail(id,isFrank){
       l.last_action='Email sent '+new Date().toLocaleDateString();
       l.last_email_date=new Date().toISOString();
       saveLeads();updateStats();
-      if(statusEl){statusEl.textContent='✓ Sent from '+fromEmail;statusEl.style.color='var(--green)';}
+      if(statusEl){statusEl.textContent='✓ Sent via Resend · Reply goes to '+fromEmail;statusEl.style.color='var(--green)';}
       notifyMaii(l,'email_sent');
     } else {
       throw new Error(data.error||'Send failed');
@@ -1671,7 +1835,8 @@ function updateStats(){
   const frankActive=leads.filter(l=>l.owner==='frank'&&!['unsubscribed','post_delivery','no_response'].includes(l.status)).length;
   const sarahActive=leads.filter(l=>l.owner==='sarah').length;
   const delivered=leads.filter(l=>l.status==='delivered'||l.status==='post_delivery').length;
-  const pipeline=leads.filter(l=>['interested','closed','agreement_signed','active'].includes(l.status)).length*750;
+  const pipeline=leads.filter(l=>['interested','closed','agreement_signed','active'].includes(l.status))
+    .reduce((sum,l)=>sum+(parseInt(l.package)||750),0);
 
   document.getElementById('ts-total').textContent=total;
   document.getElementById('ts-frank').textContent=frankActive;
@@ -2013,10 +2178,10 @@ async function sendReply(){
   const toName = selectedEmail.from?.emailAddress?.name || toEmail;
   const subject = selectedEmail.subject?.startsWith('Re:') ? selectedEmail.subject : 'Re: ' + (selectedEmail.subject || '');
   try {
-    const res = await fetch('/api/email', {
+    const res = await fetch('/api/sendemail', {
       method: 'POST',
       headers: {'Content-Type':'application/json'},
-      body: JSON.stringify({fromEmail, toEmail, toName, subject, body, saveToSent: true})
+      body: JSON.stringify({fromEmail, toEmail, toName, subject, body})
     });
     const data = await res.json();
     if(data.success){
@@ -2068,6 +2233,7 @@ renderPipelineTable();
 checkSupabase();
 renderUploadedDocs();
 wirePDFdownload();
+checkHoldResumed();
 showScripts('architecture',document.getElementById('script-btn-arch'));
 showOnboarding('frank',null);
 loadDoc('application');
