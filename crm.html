@@ -471,6 +471,8 @@ tr:hover td{background:rgba(26,115,232,0.04)}
       <div class="settings-section">
         <h3>Microsoft Graph — Email (M365)</h3>
         <div class="success" id="graph-status">Configured — eigenvalue-crm app registered</div>
+        <div class="info" style="font-size:0.78rem">Email sends via Vercel proxy (api/email.js). Add these 3 environment variables in Vercel → Project Settings → Environment Variables:</div>
+        <div style="background:var(--bg);border:1px solid var(--border);border-radius:var(--r);padding:0.6rem;font-size:0.72rem;font-family:monospace;color:var(--muted);margin-bottom:0.6rem">M365_CLIENT_ID = [your client id]<br>M365_TENANT_ID = [your tenant id]<br>M365_CLIENT_SECRET = [your client secret]</div>
         <div class="settings-row"><label>Client ID</label><input type="password" id="s-client-id" placeholder="Paste Client ID..."/></div>
         <div class="settings-row"><label>Tenant ID</label><input type="password" id="s-tenant-id" placeholder="Paste Tenant ID..."/></div>
         <div class="settings-row"><label>Client Secret</label><input type="password" id="s-client-secret" placeholder="Paste Client Secret..."/></div>
@@ -941,37 +943,26 @@ async function bulkSendAll(){
     const template=getEmailTemplate(l,true);
     statusEl.textContent=`Sending ${sent+failed+1} of ${checked.length} — ${l.company}...`;
     try{
-      const clientId=localStorage.getItem('crm_client_id')||'';
-      const tenantId=localStorage.getItem('crm_tenant_id')||'';
-      const clientSecret=localStorage.getItem('crm_client_secret')||'';
-      if(!clientId||!tenantId||!clientSecret){
-        alert('M365 keys not set in Settings. Cannot send.');
-        return;
-      }
-      const tokenRes=await fetch(`https://login.microsoftonline.com/${tenantId}/oauth2/v2.0/token`,{
+        // M365 credentials handled by /api/email proxy on Vercel
+      const res=await fetch('/api/email',{
         method:'POST',
-        headers:{'Content-Type':'application/x-www-form-urlencoded'},
-        body:new URLSearchParams({grant_type:'client_credentials',client_id:clientId,client_secret:clientSecret,scope:'https://graph.microsoft.com/.default'})
-      });
-      const tokenData=await tokenRes.json();
-      if(!tokenData.access_token)throw new Error('Token failed');
-      const mailRes=await fetch(`https://graph.microsoft.com/v1.0/users/${FRANK_EMAIL}/sendMail`,{
-        method:'POST',
-        headers:{'Authorization':'Bearer '+tokenData.access_token,'Content-Type':'application/json'},
+        headers:{'Content-Type':'application/json'},
         body:JSON.stringify({
-          message:{
-            subject:template.subject,
-            body:{contentType:'Text',content:template.body},
-            toRecipients:[{emailAddress:{address:l.email,name:l.first_name||l.company}}],
-          },
-          saveToSentItems:true
+          fromEmail:FRANK_EMAIL,
+          toEmail:l.email,
+          toName:l.first_name||l.company,
+          subject:template.subject,
+          body:template.body,
+          saveToSent:true
         })
       });
-      if(mailRes.ok||mailRes.status===202){
+      const data=await res.json();
+      if(data.success){
         l.email_sequence=(l.email_sequence||0)+1;
         l.last_action='Email sent '+new Date().toLocaleDateString();
         sent++;
       } else {
+        console.error('Bulk send failed for '+l.company+':',data.error);
         failed++;
       }
     } catch(e){
@@ -1086,40 +1077,21 @@ async function sendEmail(id,isFrank){
   const fromEmail=isFrank?FRANK_EMAIL:SARAH_EMAIL;
   const statusEl=document.getElementById('send-status');
   if(statusEl){statusEl.textContent='Sending...';statusEl.style.color='var(--amber)';}
-
-  // Microsoft Graph API — sends as the user via client credentials
-  // Flow: get access token → POST /users/{from}/sendMail
   try {
-    // Step 1: Get token
-    const tokenRes=await fetch(`https://login.microsoftonline.com/${M365_TENANT_ID}/oauth2/v2.0/token`,{
+    const res=await fetch('/api/email',{
       method:'POST',
-      headers:{'Content-Type':'application/x-www-form-urlencoded'},
-      body:new URLSearchParams({
-        grant_type:'client_credentials',
-        client_id:document.getElementById('s-client-id')?.value||M365_CLIENT_ID,
-        client_secret:document.getElementById('s-client-secret')?.value||'',
-        scope:'https://graph.microsoft.com/.default'
-      })
-    });
-    const tokenData=await tokenRes.json();
-    if(!tokenData.access_token)throw new Error('Token failed: '+(tokenData.error_description||tokenData.error));
-
-    // Step 2: Send mail
-    const mailRes=await fetch(`https://graph.microsoft.com/v1.0/users/${fromEmail}/sendMail`,{
-      method:'POST',
-      headers:{'Authorization':'Bearer '+tokenData.access_token,'Content-Type':'application/json'},
+      headers:{'Content-Type':'application/json'},
       body:JSON.stringify({
-        message:{
-          subject,
-          body:{contentType:'Text',content:body},
-          toRecipients:[{emailAddress:{address:l.email,name:l.first_name||l.company}}],
-          from:{emailAddress:{address:fromEmail}},
-        },
-        saveToSentItems:true
+        fromEmail,
+        toEmail:l.email,
+        toName:l.first_name||l.company,
+        subject,
+        body,
+        saveToSent:true
       })
     });
-
-    if(mailRes.ok||mailRes.status===202){
+    const data=await res.json();
+    if(data.success){
       l.email_sequence=(l.email_sequence||0)+1;
       l.last_action='Email sent '+new Date().toLocaleDateString();
       l.last_email_date=new Date().toISOString();
@@ -1127,8 +1099,7 @@ async function sendEmail(id,isFrank){
       if(statusEl){statusEl.textContent='✓ Sent from '+fromEmail;statusEl.style.color='var(--green)';}
       notifyMaii(l,'email_sent');
     } else {
-      const err=await mailRes.json();
-      throw new Error(err.error?.message||'Send failed '+mailRes.status);
+      throw new Error(data.error||'Send failed');
     }
   } catch(e){
     if(statusEl){statusEl.textContent='Error: '+e.message;statusEl.style.color='var(--red)';}
