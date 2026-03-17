@@ -289,7 +289,7 @@ tr:hover td{background:rgba(26,115,232,0.04)}
 
     <!-- FRANK TAB -->
     <div id="tab-frank" class="page">
-      <div class="info">Frank's active leads — select a lead to compose email or update status. All emails send from rfrank@eigenvalueconsulting.com via Microsoft Graph.</div>
+      <div class="info">Frank's active leads — select a lead to compose email or update status. All emails send from rfrank@maxeconsulting.com via Microsoft Graph.</div>
       <div style="display:flex;gap:0.5rem;margin-bottom:0.8rem;align-items:center;flex-wrap:wrap">
         <button class="btn btn-primary btn-sm" onclick="bulkSendAll()">⚡ Send All Selected</button>
         <button class="btn btn-ghost btn-sm" onclick="frankSelectAll()">Select All</button>
@@ -474,7 +474,7 @@ tr:hover td{background:rgba(26,115,232,0.04)}
         <div class="settings-row"><label>Client ID</label><input type="password" id="s-client-id" placeholder="Paste Client ID..."/></div>
         <div class="settings-row"><label>Tenant ID</label><input type="password" id="s-tenant-id" placeholder="Paste Tenant ID..."/></div>
         <div class="settings-row"><label>Client Secret</label><input type="password" id="s-client-secret" placeholder="Paste Client Secret..."/></div>
-        <div class="settings-row"><label>Frank's email</label><input type="text" id="s-frank-email" value="rfrank@eigenvalueconsulting.com"/></div>
+        <div class="settings-row"><label>Frank's email</label><input type="text" id="s-frank-email" value="rfrank@maxeconsulting.com"/></div>
         <div class="settings-row"><label>Sarah's email</label><input type="text" id="s-sarah-email" value="sarah@maxeconsulting.com"/></div>
         <div class="settings-row"><label>Notify Maii at</label><input type="text" id="s-notify-email" value="max@maxeconsulting.com"/></div>
         <div style="margin-top:0.8rem;display:flex;gap:0.5rem">
@@ -604,7 +604,7 @@ const M365_TENANT_ID = ''; // Paste in Settings tab
 // Note: client secret stored in settings only, never in code for production
 // For the Vercel proxy approach, store as environment variable GRAPH_SECRET
 
-const FRANK_EMAIL = localStorage.getItem('crm_frank_email') || 'rfrank@eigenvalueconsulting.com';
+const FRANK_EMAIL = localStorage.getItem('crm_frank_email') || 'rfrank@maxeconsulting.com';
 const SARAH_EMAIL = localStorage.getItem('crm_sarah_email') || 'sarah@maxeconsulting.com';
 const NOTIFY_EMAIL = 'max@maxeconsulting.com';
 const ANTHROPIC_KEY = ''; // Set in settings — calls go through Vercel proxy
@@ -930,7 +930,7 @@ function frankClearAll(){
 async function bulkSendAll(){
   const checked=[...document.querySelectorAll('.frank-chk:checked')].map(c=>c.dataset.id);
   if(!checked.length){alert('Select at least one lead first');return;}
-  if(!confirm(`Send emails to ${checked.length} leads now?\n\nEmails will send from rfrank@eigenvalueconsulting.com using the template for each lead's product and sequence number.`))return;
+  if(!confirm(`Send emails to ${checked.length} leads now?\n\nEmails will send from rfrank@maxeconsulting.com using the template for each lead's product and sequence number.`))return;
 
   const statusEl=document.getElementById('bulk-status');
   let sent=0,failed=0;
@@ -1062,19 +1062,19 @@ function getEmailTemplate(l,isFrank){
   if(seq===0){
     const subjects={'Architecture':'3 financial patterns I found in '+ind+' companies your size','Blueprint':'3 operational issues I see in '+ind+' companies your size','Nucleus':'Quick question about '+l.company+'\'s team structure'};
     const bodies={
-      Architecture:`Hi ${fname},\n\nI run a business diagnostics firm that audits the financial structure of ${ind} companies in the $3M–$20M range. In recent engagements across Texas and Ohio, the same three same patterns consistently: pricing that doesn\'t reflect true job cost (often 8 to 12 percent in lost margin), vendor payment terms that haven\'t been renegotiated in years, and cash flow timing gaps that create shortfalls out of nowhere.\\n\\nI offer a $750 Eigenvalue Diagnostic — a written findings report that confirms whether these patterns exist in your business and estimates what they're costing you annually. No call required to start.\n\nWorth a look?\n\n— Richard J. Frank | Eigenvalue Consulting\nrfrank@eigenvalueconsulting.com  ·  eigenvalueconsulting.com`,
-      Blueprint:`Hi ${fname},\n\nI work with ${ind} operators in the $2M–$15M range on one specific problem: broken back-office processes that quietly drain margin without ever showing up clearly on a P&L.\n\nThe pattern is almost always the same: purchase orders approved verbally with no paper trail, invoices going out weeks after work is done, and no visibility into what is happening day to day.\\n\\nMy $750 Eigenvalue Diagnostic confirms whether these exist in your operation and tells you exactly what fixing them is worth. Delivered as a written findings report in 5–7 days.\n\nInterested?\n\n— Richard J. Frank | Eigenvalue Consulting\nrfrank@eigenvalueconsulting.com`,
-      Nucleus:`Hi ${fname},\n\nI specialize in workforce retention and onboarding infrastructure for ${ind} companies. The pattern I see in most operators your size is that institutional knowledge lives in a few people's heads, new hires take two to three months to be truly useful, and turnover is costing $8,000 to $15,000 per person with no one tracking it.\n\nMy $750 Eigenvalue Diagnostic reviews your current people structure and delivers a written findings report in 5–7 days.\n\nNo call required. Worth a look?\n\n— Richard J. Frank | Eigenvalue Consulting\nrfrank@eigenvalueconsulting.com`,
+      Architecture:`Hi ${fname},\n\nI run a business diagnostics firm that audits the financial structure of ${ind} companies in the $3M–$20M range. In recent engagements across Texas and Ohio, the same three same patterns consistently: pricing that doesn\'t reflect true job cost (often 8 to 12 percent in lost margin), vendor payment terms that haven\'t been renegotiated in years, and cash flow timing gaps that create shortfalls out of nowhere.\\n\\nI offer a $750 Eigenvalue Diagnostic — a written findings report that confirms whether these patterns exist in your business and estimates what they're costing you annually. No call required to start.\n\nWorth a look?\n\n— Richard J. Frank | Eigenvalue Consulting\nrfrank@maxeconsulting.com  ·  eigenvalueconsulting.com`,
+      Blueprint:`Hi ${fname},\n\nI work with ${ind} operators in the $2M–$15M range on one specific problem: broken back-office processes that quietly drain margin without ever showing up clearly on a P&L.\n\nThe pattern is almost always the same: purchase orders approved verbally with no paper trail, invoices going out weeks after work is done, and no visibility into what is happening day to day.\\n\\nMy $750 Eigenvalue Diagnostic confirms whether these exist in your operation and tells you exactly what fixing them is worth. Delivered as a written findings report in 5–7 days.\n\nInterested?\n\n— Richard J. Frank | Eigenvalue Consulting\nrfrank@maxeconsulting.com`,
+      Nucleus:`Hi ${fname},\n\nI specialize in workforce retention and onboarding infrastructure for ${ind} companies. The pattern I see in most operators your size is that institutional knowledge lives in a few people's heads, new hires take two to three months to be truly useful, and turnover is costing $8,000 to $15,000 per person with no one tracking it.\n\nMy $750 Eigenvalue Diagnostic reviews your current people structure and delivers a written findings report in 5–7 days.\n\nNo call required. Worth a look?\n\n— Richard J. Frank | Eigenvalue Consulting\nrfrank@maxeconsulting.com`,
     };
     return{subject:subjects[prod]||subjects.Architecture,body:bodies[prod]||bodies.Architecture};
   }
   if(seq===1)return{
     subject:`Wanted to make sure this didn't get buried`,
-    body:`Hi ${fname},\n\nJust wanted to make sure my last note didn't get lost — happy to answer any questions about the diagnostic before you decide.\n\nThe $750 stays regardless of timing.\n\n— Richard J. Frank | Eigenvalue Consulting\nrfrank@eigenvalueconsulting.com`
+    body:`Hi ${fname},\n\nJust wanted to make sure my last note didn't get lost — happy to answer any questions about the diagnostic before you decide.\n\nThe $750 stays regardless of timing.\n\n— Richard J. Frank | Eigenvalue Consulting\nrfrank@maxeconsulting.com`
   };
   return{
     subject:`Last note from me — ${l.company}`,
-    body:`Hi ${fname},\n\nLast note from me — if timing isn't right, happy to reconnect whenever it makes sense. The diagnostic stays at $750 regardless of when you move forward.\n\n— Richard J. Frank | Eigenvalue Consulting\nrfrank@eigenvalueconsulting.com`
+    body:`Hi ${fname},\n\nLast note from me — if timing isn't right, happy to reconnect whenever it makes sense. The diagnostic stays at $750 regardless of when you move forward.\n\n— Richard J. Frank | Eigenvalue Consulting\nrfrank@maxeconsulting.com`
   };
 }
 
@@ -1207,7 +1207,7 @@ async function sendAI(){
 
 function buildSystemPrompt(agent,lead){
   const agentInfo=agent==='frank'?
-    `You are assisting Richard J. Frank, the sales representative for Eigenvalue Consulting. Frank handles cold outreach, follows up, qualifies leads, and closes deals (gets them to submit the application). Frank does NOT handle contracts, agreements, or post-sale management. Frank's email is rfrank@eigenvalueconsulting.com.`:
+    `You are assisting Richard J. Frank, the sales representative for Eigenvalue Consulting. Frank handles cold outreach, follows up, qualifies leads, and closes deals (gets them to submit the application). Frank does NOT handle contracts, agreements, or post-sale management. Frank's email is rfrank@maxeconsulting.com.`:
     `You are assisting Sarah Chen, the legal and account manager for Eigenvalue Consulting. Sarah handles consulting agreements, solution scoping conversations, and client account management after Frank closes. Sarah's email is sarah@maxeconsulting.com.`;
   const products=`
 PRODUCTS:
@@ -1576,7 +1576,7 @@ const SCRIPTS={
     {title:'Solution Discovery — After Delivery',body:`Hi [First Name],\n\nNow that your diagnostic is complete, I wanted to follow up on the recommendation in your report.\n\nBased on what we found, the natural next step is [SOLUTION NAME]. Before we scope this properly, a few questions:\n\n1. When are you looking to implement this?\n2. Would you like to involve anyone else from your team in the conversation?\n3. On a scale of 1–10, how urgent is solving this problem right now?\n\nHappy to continue by email or jump on a quick call — whatever works best.\n\n— Sarah Chen | Eigenvalue Consulting`},
     {title:'Deposit Follow-up',body:`Hi [First Name],\n\nJust following up on the agreement I sent over. Please let me know if you have any questions or if there's anything I can clarify before signing.\n\nPayment link: [STRIPE LINK]\n\n— Sarah Chen | Eigenvalue Consulting`},
     {title:'Solution Proposal',body:`Hi [First Name],\n\nBased on our conversation and the diagnostic findings, our recommendation is:\n\n[SOLUTION NAME] — $[PRICE RANGE]\n\nWhat this includes:\n• [DELIVERABLE 1]\n• [DELIVERABLE 2]\n• [DELIVERABLE 3]\n\nTimeline: [TIMELINE]\nDeposit (50%): $[DEPOSIT] due before start\nBalance: $[BALANCE] due on delivery\n\nWould you like to move forward?\n\n— Sarah Chen | Eigenvalue Consulting`},
-    {title:'Post-Delivery (Frank sends)',body:`Hi [First Name],\n\nIt was a genuine pleasure working with you and the team at [COMPANY]. I hope the findings were useful and the direction is clearer.\n\nIf you ever have questions — even weeks or months from now — shoot me an email. I'm always happy to help.\n\nWishing you and the team the best.\n\n— Richard J. Frank | Eigenvalue Consulting\nrfrank@eigenvalueconsulting.com`},
+    {title:'Post-Delivery (Frank sends)',body:`Hi [First Name],\n\nIt was a genuine pleasure working with you and the team at [COMPANY]. I hope the findings were useful and the direction is clearer.\n\nIf you ever have questions — even weeks or months from now — shoot me an email. I'm always happy to help.\n\nWishing you and the team the best.\n\n— Richard J. Frank | Eigenvalue Consulting\nrfrank@maxeconsulting.com`},
   ],
   followup:[
     {title:'Day 4 Follow-up',body:`Hi [First Name],\n\nWanted to make sure my last note didn't get buried — happy to answer any questions about the diagnostic before you decide.\n\nThe $750 stays regardless of timing.\n\n— Richard J. Frank`},
@@ -1604,7 +1604,7 @@ function showScripts(type,btn){
 const ONBOARDING={
   frank:[
     {title:'Your Mission',color:'gold',text:`You are the sales face of Eigenvalue Consulting. Your job is to find the right businesses, start the right conversations, and create enough trust that they say yes to the $750 diagnostic. That's it. You do not handle contracts. You do not quote solution prices. You do not manage active projects. You close — then you hand off to Sarah.\n\nYour tone: warm, direct, professional. You're not a salesperson — you're someone who has seen their problem before and knows how to fix it. That's how you write every email.`},
-    {title:'What You Can Do',color:'blue',text:`Send cold emails from rfrank@eigenvalueconsulting.com\nFollow up at Day 4 and Day 12 if no reply\nAnswer questions about the diagnostic process\nSend the application form and payment link when they're interested\nUpdate lead status after every interaction\nSend the warm post-delivery email after Maii completes a project\nAnswer follow-up questions from former clients — direct technical questions to Maii`},
+    {title:'What You Can Do',color:'blue',text:`Send cold emails from rfrank@maxeconsulting.com\nFollow up at Day 4 and Day 12 if no reply\nAnswer questions about the diagnostic process\nSend the application form and payment link when they're interested\nUpdate lead status after every interaction\nSend the warm post-delivery email after Maii completes a project\nAnswer follow-up questions from former clients — direct technical questions to Maii`},
     {title:'What You Cannot Do',color:'blue',text:`Quote prices for solutions (Architecture/Blueprint/Nucleus) — that's Sarah after the diagnostic\nSend the consulting agreement — that's Sarah\nMake commitments about timelines or scope — that's Maii\nDiscount the diagnostic — it's always $750\nContact anyone marked Unsubscribed — ever\nSend more than 3 emails to any lead without a reply`},
     {title:'Status Update Rules',color:'blue',text:`Every time you send an email: update email_sequence count\nThey replied with interest: mark Warm\nThey said yes to the diagnostic: mark Interested, send application link immediately\nThey submitted the application: mark Closed — Sarah takes over\nBad email bounce: mark Bounced immediately\nThey asked to stop: mark Unsubscribed immediately, never contact again\nNo reply after sequence 3: mark No Response`},
   ],
