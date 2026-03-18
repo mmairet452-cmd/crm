@@ -750,7 +750,7 @@ async function syncFromLIPC(){
     if(!supaUrl2||!supaKey2){alert('Add Supabase URL and Key in Settings first, then Save Settings');btn.textContent='Sync from LIPC';btn.disabled=false;return;}
     const supaSync=supabase.createClient(supaUrl2,supaKey2);
     const {data,error} = await supaSync.from('email_leads')
-      .select('*').eq('status','pushed').order('date_entered',{ascending:false});
+      .select('*').order('date_entered',{ascending:false});
     if(error)throw error;
     let added=0;
     (data||[]).forEach(l=>{
@@ -1117,22 +1117,78 @@ function renderFrank(){
   let frankLeads=leads.filter(l=>l.owner==='frank'&&!['unsubscribed','post_delivery'].includes(l.status));
   if(prodFilter) frankLeads=frankLeads.filter(l=>l.product===prodFilter);
   if(statFilter) frankLeads=frankLeads.filter(l=>l.status===statFilter);
+  // Sort: bounced first, then never sent, then by sequence
+  frankLeads.sort((a,b)=>{
+    if(a.email_delivery_status==='bounced'&&b.email_delivery_status!=='bounced')return -1;
+    if(b.email_delivery_status==='bounced'&&a.email_delivery_status!=='bounced')return 1;
+    if(a.on_hold&&!b.on_hold)return 1;
+    if(!a.on_hold&&b.on_hold)return -1;
+    return 0;
+  });
   const el=document.getElementById('frank-leads-list');
   if(!el)return;
-  document.getElementById('bulk-status').textContent=frankLeads.length+' leads shown — select to bulk send';
-  el.innerHTML=frankLeads.length?`
-    <div style="overflow-y:auto;max-height:60vh">
-    ${frankLeads.map(l=>`
-    <div class="kanban-card" style="margin-bottom:0.4rem;display:flex;align-items:flex-start;gap:0.5rem;padding:0.5rem 0.6rem">
-      <input type="checkbox" class="frank-chk" data-id="${l.id}" style="margin-top:3px;accent-color:var(--gold);flex-shrink:0" onchange="updateBulkCount()"/>
-      <div style="flex:1;cursor:pointer;min-width:0" onclick="selectLeadForCompose('${l.id}','frank')">
-        <div class="kanban-card-company" style="font-size:0.82rem">${l.company}</div>
-        <div class="kanban-card-meta">${l.first_name||'—'} · <span class="pill ${statusPill(l.status)}" style="font-size:0.6rem">${STATUSES[l.status]?.label||l.status}</span> · ${l.product||'—'}</div>
-        <div class="kanban-card-meta" style="color:var(--muted)">Seq #${l.email_sequence||0} · ${l.industry||'—'} · ${l.state||'—'}</div>
-      </div>
-    </div>`).join('')}
-    </div>`:'<div style="color:var(--muted);font-size:0.78rem;padding:0.5rem">No leads match filter</div>';
+  const total=frankLeads.length;
+  const sent=frankLeads.filter(l=>(l.email_sequence||0)>0).length;
+  const bounced=frankLeads.filter(l=>l.email_delivery_status==='bounced').length;
+  const needsEmail=frankLeads.filter(l=>!(l.email_sequence)||l.email_sequence===0).length;
+  document.getElementById('bulk-status').textContent=
+    total+' leads · '+sent+' emailed · '+needsEmail+' never contacted'+(bounced?' · '+bounced+' bounced':'');
+  if(!frankLeads.length){el.innerHTML='<div style="color:var(--muted);font-size:0.78rem;padding:1rem;text-align:center">No leads match filter</div>';return;}
+  el.innerHTML='<div style="overflow-y:auto;max-height:calc(100vh - 320px)">'+frankLeads.map(l=>{
+    const ds=l.email_delivery_status||'';
+    const seq=l.email_sequence||0;
+    const isBounced=ds==='bounced';
+    const neverSent=seq===0;
+    const cardColor=isBounced?'rgba(234,67,53,0.15)':neverSent?'var(--bg3)':'rgba(52,168,83,0.06)';
+    const borderColor=isBounced?'var(--red)':neverSent?'var(--border)':'var(--green)';
+    const btnLabel=neverSent?'Send Email':isBounced?'Retry':'Follow-up #'+(seq+1);
+    return '<div style="margin-bottom:0.5rem;border:1px solid '+borderColor+';border-left:3px solid '+borderColor+';border-radius:var(--r);padding:0.55rem 0.65rem;background:'+cardColor+';opacity:'+(l.on_hold?0.5:1)+'">'
+      +'<div style="display:flex;align-items:flex-start;gap:0.5rem">'
+      +'<input type="checkbox" class="frank-chk" data-id="'+l.id+'" '+(l.on_hold?'disabled':'')+' style="margin-top:4px;accent-color:var(--gold);flex-shrink:0" onchange="updateBulkCount()"/>'
+      +'<div style="flex:1;min-width:0">'
+      +'<div style="display:flex;align-items:center;justify-content:space-between;gap:0.3rem;flex-wrap:wrap">'
+      +'<div style="font-size:0.82rem;font-weight:600;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;max-width:160px">'+l.company+'</div>'
+      +'<div style="display:flex;gap:0.25rem;flex-shrink:0;flex-wrap:wrap">'
+      +(isBounced?'<span style="font-size:0.6rem;background:rgba(234,67,53,0.2);color:var(--red);padding:1px 5px;border-radius:6px;font-weight:700">⚠ BOUNCED</span>':'')
+      +(neverSent&&!isBounced?'<span style="font-size:0.6rem;background:rgba(107,127,168,0.15);color:var(--muted);padding:1px 5px;border-radius:6px">Not sent</span>':'')
+      +(!neverSent&&!isBounced?'<span style="font-size:0.6rem;background:rgba(52,168,83,0.15);color:var(--green);padding:1px 5px;border-radius:6px">✓ Seq #'+seq+'</span>':'')
+      +(l.on_hold?'<span style="font-size:0.6rem;background:rgba(251,188,4,0.15);color:var(--amber);padding:1px 5px;border-radius:6px">⏸ Hold</span>':'')
+      +'</div></div>'
+      +'<div style="font-size:0.72rem;color:var(--muted);margin-top:2px">'
+      +(l.first_name||'—')+' · <span class="pill '+statusPill(l.status)+'" style="font-size:0.58rem">'+(STATUSES[l.status]?.label||l.status)+'</span> · '+(l.product||'—')+' · '+(l.state||'—')
+      +'</div>'
+      +(l.last_action?'<div style="font-size:0.66rem;color:var(--muted);margin-top:1px">'+l.last_action+'</div>':'')
+      +(l.on_hold&&l.hold_resume?'<div style="font-size:0.66rem;color:var(--amber);margin-top:1px">Resume: '+l.hold_resume+'</div>':'')
+      +'</div></div>'
+      +'<div style="display:flex;gap:0.3rem;margin-top:0.4rem;padding-top:0.35rem;border-top:1px solid rgba(30,45,80,0.3)">'
+      +'<button class="btn btn-primary btn-sm" style="flex:1;font-size:0.68rem" onclick="selectLeadForCompose(''+l.id+'','frank')">✉ '+btnLabel+'</button>'
+      +'<button class="btn btn-ghost btn-sm" style="font-size:0.68rem" onclick="openLeadModal(''+l.id+'')">Profile</button>'
+      +(isBounced?'<button class="btn btn-ghost btn-sm" style="font-size:0.68rem;border-color:var(--red);color:var(--red)" onclick="confirmBounce(''+l.id+'')">Confirm</button>':'')
+      +(!isBounced&&seq>0?'<button class="btn btn-ghost btn-sm" style="font-size:0.68rem" onclick="quickStatusFrank(''+l.id+'')">Status</button>':'')
+      +'</div>'
+      +'</div>';
+  }).join('')+'</div>';
 }
+
+function confirmBounce(id){
+  const l=leads.find(x=>x.id===id);if(!l)return;
+  l.email_delivery_status='bounced';l.status='bounced';
+  l.last_action='Bounced '+new Date().toLocaleDateString();
+  saveLeads();renderFrank();updateStats();
+  addLog('out','Confirmed bounce: '+l.company);
+}
+
+function quickStatusFrank(id){
+  const l=leads.find(x=>x.id===id);if(!l)return;
+  const next=STATUSES[l.status]?.next||[];
+  if(!next.length){alert('No next status available');return;}
+  const options=next.map((s,i)=>(i+1)+'. '+(STATUSES[s]?.label||s)).join('\n');
+  const choice=prompt('Update '+l.company+':\n'+options+'\n\nEnter number:');
+  if(!choice)return;
+  const idx=parseInt(choice)-1;
+  if(next[idx]){setLeadStatus(id,next[idx]);renderFrank();}
+}
+
 
 function updateBulkCount(){
   const checked=document.querySelectorAll('.frank-chk:checked').length;
@@ -1179,10 +1235,15 @@ async function bulkSendAll(){
       const data=await res.json();
       if(data.success){
         l.email_sequence=(l.email_sequence||0)+1;
-        l.last_action='Email sent '+new Date().toLocaleDateString();
+        l.last_action='Email #'+l.email_sequence+' sent '+new Date().toLocaleDateString();
+        l.email_delivery_status='sent';
         sent++;
       } else {
         console.error('Bulk send failed for '+l.company+':',data.error);
+        if(data.error&&(data.error.includes('rejected')||data.error.includes('Access denied'))){
+          l.email_delivery_status='bounced';
+          l.last_action='Bounced '+new Date().toLocaleDateString();
+        }
         failed++;
       }
     } catch(e){
@@ -1228,9 +1289,20 @@ function openCompose(id,agent){
   if(!panel)return;
   if(isFrank)showTab('frank'); else showTab('sarah');
   const sendFn=isFrank?'true':'false';
+  // Get 3 script variants for this product/sequence
+  const scripts = getEmailScripts(l, isFrank);
   panel.innerHTML=`
-    <h3 style="margin-bottom:0.6rem">Email to ${l.company} — ${l.first_name||''}</h3>
-    <div class="info" style="font-size:0.72rem;margin-bottom:0.6rem">From: ${fromEmail} &nbsp;·&nbsp; To: ${l.email} &nbsp;·&nbsp; Sequence #${(l.email_sequence||0)+1} &nbsp;·&nbsp; Product: ${l.product||'—'}</div>
+    <h3 style="margin-bottom:0.4rem">Email to ${l.company} — ${l.first_name||''}</h3>
+    <div style="font-size:0.72rem;color:var(--muted);margin-bottom:0.6rem">
+      From: ${fromEmail} · To: ${l.email} · Sequence #${(l.email_sequence||0)+1} · Product: ${l.product||'—'}
+      ${l.lipc_score?'· Score: '+l.lipc_score:''}
+      ${l.website?'· <a href="'+l.website+'" target="_blank" style="color:var(--gold)">Website</a>':''}
+    </div>
+    ${scripts.length>1?`<div style="display:flex;gap:0.4rem;margin-bottom:0.6rem;align-items:center">
+      <span style="font-size:0.68rem;color:var(--muted);">Script:</span>
+      ${scripts.map((s,i)=>`<button class="btn btn-ghost btn-sm" style="font-size:0.68rem" onclick="loadScript(${i},'${id}',${sendFn})">${s.label}</button>`).join('')}
+      <span style="font-size:0.68rem;color:var(--muted);margin-left:auto">Edit freely before sending</span>
+    </div>`:''}
     <div class="email-composer">
       <div class="email-composer-header">
         <span style="color:var(--muted);flex-shrink:0">Subject:</span>
@@ -1240,6 +1312,7 @@ function openCompose(id,agent){
       <div class="email-composer-footer">
         <button class="btn btn-ghost btn-sm" onclick="aiImproveEmail()">AI Improve</button>
         <div style="flex:1"></div>
+        <button class="btn btn-ghost btn-sm" style="border-color:var(--amber);color:var(--amber)" onclick="markTestSent('${id}')">Mark Test Sent</button>
         <button class="btn btn-primary" onclick="sendEmail('${id}',${sendFn})">Send via M365</button>
       </div>
     </div>
@@ -1251,6 +1324,165 @@ function openCompose(id,agent){
       <button class="btn btn-ghost btn-sm" onclick="setLeadStatus('${id}','no_response');renderFrank();renderSarah()">No Response</button>
       <button class="btn btn-red btn-sm" onclick="setLeadStatus('${id}','unsubscribed');renderFrank();renderSarah()">Unsubscribe</button>
     </div>`;
+}
+
+function getEmailScripts(l, isFrank){
+  if(!isFrank) return [];
+  const prod = l.product||'Architecture';
+  const fname = l.first_name||'there';
+  const ind = l.industry||'your industry';
+  const co = l.company||'your company';
+  const seq = l.email_sequence||0;
+  if(seq > 0) return []; // follow-ups dont need variants
+
+  const scripts = {
+    Architecture:[
+      {label:'Financial Pain',
+       subject:'A financial pattern I keep seeing in '+ind+' companies',
+       body:'Hi '+fname+',
+
+I run a business diagnostics firm working with '+ind+' companies in the $3M to $20M range. Something I keep running into at companies your size: pricing that does not fully account for job cost, vendor terms sitting on autopilot for years, and cash flow gaps that appear out of nowhere.
+
+I offer a written diagnostic for $750. You share three months of financials, I deliver a findings report in 5 to 7 days — specific issues, estimated annual cost, and what a fix looks like.
+
+No call required to start. Worth a look?
+
+— Richard J. Frank
+Eigenvalue Consulting
+rfrank@maxeconsulting.com'},
+      {label:'Clarity Angle',
+       subject:'Quick question about how '+co+' tracks margin',
+       body:'Hi '+fname+',
+
+I work with '+ind+' businesses to get clarity on their financial structure — specifically where margin is being lost quietly without showing up on the P&L.
+
+Most operators I talk to know something is off but cannot pinpoint it. That is exactly what the Eigenvalue Diagnostic does. $750, written findings report in 5 to 7 days, no call needed to start.
+
+Would this be useful for you right now?
+
+— Richard J. Frank
+Eigenvalue Consulting
+rfrank@maxeconsulting.com'},
+      {label:'Direct Offer',
+       subject:'Something that might be worth 2 minutes',
+       body:'Hi '+fname+',
+
+I help '+ind+' companies in the $3M to $20M range figure out where their money is actually going — specifically the gaps that do not show up clearly on a report.
+
+For $750 I deliver a written findings report in under a week. No call, no commitment beyond that.
+
+If the timing is off I understand. But if you have been wondering where margin is going, this is probably worth a look.
+
+— Richard J. Frank
+Eigenvalue Consulting
+rfrank@maxeconsulting.com'},
+    ],
+    Blueprint:[
+      {label:'Process Pain',
+       subject:'Something I keep seeing in '+ind+' back offices',
+       body:'Hi '+fname+',
+
+I work with '+ind+' operators on a specific problem: back-office processes that quietly drain margin without ever appearing clearly on a P&L.
+
+The pattern is almost always the same. Purchase orders approved verbally with no trail. Invoices going out weeks after the work is done. No dashboard to see what is actually happening day to day.
+
+For $750 I deliver a written findings report in 5 to 7 days — specific gaps identified and what fixing them is worth. No call needed to start.
+
+Interested?
+
+— Richard J. Frank
+Eigenvalue Consulting
+rfrank@maxeconsulting.com'},
+      {label:'Dashboard Angle',
+       subject:'How does '+co+' track what is open and what is late',
+       body:'Hi '+fname+',
+
+Quick question — if I asked you right now how much you are owed and what is overdue, how long would it take to get that number?
+
+For most '+ind+' companies your size, the honest answer is: longer than it should be. That is the gap I help fix.
+
+The Eigenvalue Diagnostic is $750 and delivers a written findings report in 5 to 7 business days. No call required. Happy to share what it typically finds in '+ind+' operations.
+
+— Richard J. Frank
+Eigenvalue Consulting
+rfrank@maxeconsulting.com'},
+      {label:'Cost Angle',
+       subject:'The hidden cost of late invoicing in '+ind,
+       body:'Hi '+fname+',
+
+Invoices going out 15 to 30 days late is one of the most common things I find in '+ind+' companies. At your revenue range it usually translates to $20,000 to $60,000 in delayed or lost cash each year.
+
+I do a written diagnostic for $750 that confirms whether this is happening in your operation and estimates the actual dollar impact. Delivered in 5 to 7 days, no call required.
+
+Worth a look?
+
+— Richard J. Frank
+Eigenvalue Consulting
+rfrank@maxeconsulting.com'},
+    ],
+    Nucleus:[
+      {label:'Turnover Cost',
+       subject:'What turnover is actually costing '+co,
+       body:'Hi '+fname+',
+
+I specialize in workforce retention and onboarding for '+ind+' companies. The pattern I see most often: new hires take two to three months to be truly useful, institutional knowledge lives in a few people's heads, and turnover is costing $8,000 to $15,000 per person with no one tracking it.
+
+For $750 I deliver a written findings report in 5 to 7 days. Specific gaps, dollar cost of turnover, and what a structured fix would recover annually. No call required.
+
+Worth a look?
+
+— Richard J. Frank
+Eigenvalue Consulting
+rfrank@maxeconsulting.com'},
+      {label:'Knowledge Risk',
+       subject:'What happens at '+co+' when someone leaves',
+       body:'Hi '+fname+',
+
+Quick question — if your best person left tomorrow, how much would walk out the door with them?
+
+For most '+ind+' companies your size, the honest answer is: too much. No written process, no documented training, no way to replace that person quickly.
+
+The Eigenvalue Diagnostic reviews your current people structure for $750 and delivers a findings report in under a week. Specific gaps, estimated cost, and a path forward.
+
+— Richard J. Frank
+Eigenvalue Consulting
+rfrank@maxeconsulting.com'},
+      {label:'Simple Offer',
+       subject:'People and onboarding in '+ind+' — quick question',
+       body:'Hi '+fname+',
+
+I work with '+ind+' companies on workforce retention and onboarding. Most operators your size have never calculated what turnover actually costs them — and when they do, it changes how they think about the problem.
+
+I do a $750 written diagnostic in 5 to 7 days. No call needed to start. If the timing is not right I understand, but if you have had turnover on your mind this is probably worth a look.
+
+— Richard J. Frank
+Eigenvalue Consulting
+rfrank@maxeconsulting.com'},
+    ],
+  };
+  return scripts[prod]||[];
+}
+
+function loadScript(idx, id, isFrank){
+  const l=leads.find(x=>x.id===id);if(!l)return;
+  const scripts=getEmailScripts(l,true);
+  if(!scripts[idx])return;
+  const s=scripts[idx];
+  const subj=document.getElementById('compose-subject');
+  const body=document.getElementById('compose-body');
+  if(subj)subj.value=s.subject;
+  if(body)body.value=s.body;
+}
+
+function markTestSent(id){
+  const l=leads.find(x=>x.id===id);if(!l)return;
+  if(!confirm('Mark this as actually sent (test mode — no email sent)?'))return;
+  l.email_sequence=(l.email_sequence||0)+1;
+  l.last_action='Email #'+l.email_sequence+' sent (test) '+new Date().toLocaleDateString();
+  l.email_delivery_status='sent';
+  saveLeads();renderFrank();updateStats();
+  const panel=document.getElementById('frank-composer-panel');
+  if(panel)panel.innerHTML='<h3>Email Composer</h3><div class="success" style="margin-top:0.5rem">Marked as sent (test mode). Select next lead.</div>';
 }
 
 function getEmailTemplate(l,isFrank){
@@ -1313,16 +1545,29 @@ async function sendEmail(id,isFrank){
     const data=await res.json();
     if(data.success){
       l.email_sequence=(l.email_sequence||0)+1;
-      l.last_action='Email sent '+new Date().toLocaleDateString();
+      l.last_action='Email #'+l.email_sequence+' sent '+new Date().toLocaleDateString();
       l.last_email_date=new Date().toISOString();
+      l.email_delivery_status='sent';
       saveLeads();updateStats();
-      if(statusEl){statusEl.textContent='✓ Sent via Resend · Reply goes to '+fromEmail;statusEl.style.color='var(--green)';}
+      if(isFrank)renderFrank();
+      if(statusEl){statusEl.textContent='✓ Email #'+l.email_sequence+' sent · replies go to '+fromEmail;statusEl.style.color='var(--green)';}
       notifyMaii(l,'email_sent');
+      setTimeout(()=>{
+        const panel=document.getElementById(isFrank?'frank-composer-panel':'sarah-composer-panel');
+        if(panel)panel.innerHTML='<h3>Email Composer</h3><div class="success" style="margin-top:0.5rem">✓ Email #'+l.email_sequence+' sent to '+l.company+'. Select next lead.</div>';
+      },2500);
     } else {
       throw new Error(data.error||'Send failed');
     }
   } catch(e){
     if(statusEl){statusEl.textContent='Error: '+e.message;statusEl.style.color='var(--red)';}
+    if(e.message.includes('rejected')||e.message.includes('not valid')||e.message.includes('Access denied')){
+      l.email_delivery_status='bounced';
+      l.last_action='Bounced '+new Date().toLocaleDateString();
+      saveLeads();
+      if(isFrank)renderFrank();
+      if(statusEl)statusEl.textContent='⚠ Bounced — '+l.company+' marked automatically';
+    }
     console.error('Email send error:',e);
   }
 }
